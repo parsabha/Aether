@@ -11,7 +11,7 @@ export function TitleBar({
   return (
     <header className="titlebar" data-tauri-drag-region>
       <div className="brand" data-tauri-drag-region>
-        <span className="brand-orb" />
+        <img className="brand-mark" src="/aether-icon.png" alt="" />
         <span className="brand-name">Aether</span>
       </div>
       <div className="titlebar-spacer" data-tauri-drag-region />

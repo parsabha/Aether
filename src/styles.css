@@ -177,10 +177,12 @@ html.solid .app-shell { background: transparent; }
   app-region: drag;
 }
 .brand { display: flex; align-items: center; gap: 10px; }
-.brand-orb {
-  width: 11px; height: 11px; border-radius: 4px;
-  background: linear-gradient(135deg, var(--accent), #6ec8ff);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+.brand-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 .brand-name {
   font-family: "Space Grotesk", Inter, sans-serif;
