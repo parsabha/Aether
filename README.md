@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/icon.png" width="128" height="128" alt="Aether">
+  <img src="docs/logo-v5.png" width="160" height="160" alt="Aether">
 </p>
 
 <h1 align="center">Aether</h1>
