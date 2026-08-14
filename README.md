@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/library.jpg" alt="Aether library" width="920">
+  <img src="docs/screenshot.jpg" alt="Aether library" width="920">
 </p>
 
 ---
