@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-toggle-island"
+description = "Enables the toggle_island command without any pre-configured scope."
+commands.allow = ["toggle_island"]
+
+[[permission]]
+identifier = "deny-toggle-island"
+description = "Denies the toggle_island command without any pre-configured scope."
+commands.deny = ["toggle_island"]

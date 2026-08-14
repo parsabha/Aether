@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-island-feed"
+description = "Enables the island_feed command without any pre-configured scope."
+commands.allow = ["island_feed"]
+
+[[permission]]
+identifier = "deny-island-feed"
+description = "Denies the island_feed command without any pre-configured scope."
+commands.deny = ["island_feed"]

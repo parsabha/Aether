@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-import-nebula"
+description = "Enables the import_nebula command without any pre-configured scope."
+commands.allow = ["import_nebula"]
+
+[[permission]]
+identifier = "deny-import-nebula"
+description = "Denies the import_nebula command without any pre-configured scope."
+commands.deny = ["import_nebula"]

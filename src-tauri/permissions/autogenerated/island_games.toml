@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-island-games"
+description = "Enables the island_games command without any pre-configured scope."
+commands.allow = ["island_games"]
+
+[[permission]]
+identifier = "deny-island-games"
+description = "Denies the island_games command without any pre-configured scope."
+commands.deny = ["island_games"]

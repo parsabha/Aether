@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-island-clear-notifications"
+description = "Enables the island_clear_notifications command without any pre-configured scope."
+commands.allow = ["island_clear_notifications"]
+
+[[permission]]
+identifier = "deny-island-clear-notifications"
+description = "Denies the island_clear_notifications command without any pre-configured scope."
+commands.deny = ["island_clear_notifications"]

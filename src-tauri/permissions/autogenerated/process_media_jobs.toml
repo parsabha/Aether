@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-process-media-jobs"
+description = "Enables the process_media_jobs command without any pre-configured scope."
+commands.allow = ["process_media_jobs"]
+
+[[permission]]
+identifier = "deny-process-media-jobs"
+description = "Denies the process_media_jobs command without any pre-configured scope."
+commands.deny = ["process_media_jobs"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-island-media-next"
+description = "Enables the island_media_next command without any pre-configured scope."
+commands.allow = ["island_media_next"]
+
+[[permission]]
+identifier = "deny-island-media-next"
+description = "Denies the island_media_next command without any pre-configured scope."
+commands.deny = ["island_media_next"]

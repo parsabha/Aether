@@ -1,0 +1,66 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Aether",
+  "version": "1.0.0",
+  "identifier": "com.parsa.aether",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "Parsa",
+    "copyright": "Copyright © 2026 Parsa",
+    "category": "Utility",
+    "shortDescription": "Liquid-glass game launcher for Windows",
+    "longDescription": "Aether is a liquid-glass game launcher for Windows with a Dynamic Island desktop widget, animated covers, and a local game library.",
+    "licenseFile": "../LICENSE.txt",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "installer/support.html": "support.html"
+    },
+    "windows": {
+      "digestAlgorithm": "sha256",
+      "webviewInstallMode": {
+        "type": "embedBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "compression": "lzma",
+        "displayLanguageSelector": false,
+        "languages": ["English"],
+        "customLanguageFiles": {
+          "English": "installer/English.nsh"
+        },
+        "startMenuFolder": "Aether",
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico",
+        "sidebarImage": "installer/sidebar.bmp",
+        "headerImage": "installer/header.bmp",
+        "uninstallerHeaderImage": "installer/uninstaller-header.bmp",
+        "installerHooks": "installer/hooks.nsh"
+      }
+    }
+  },
+  "plugins": {}
+}

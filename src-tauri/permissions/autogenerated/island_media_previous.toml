@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-island-media-previous"
+description = "Enables the island_media_previous command without any pre-configured scope."
+commands.allow = ["island_media_previous"]
+
+[[permission]]
+identifier = "deny-island-media-previous"
+description = "Denies the island_media_previous command without any pre-configured scope."
+commands.deny = ["island_media_previous"]

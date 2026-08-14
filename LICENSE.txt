@@ -1,0 +1,9 @@
+Aether End User License
+
+Copyright (c) 2026 Parsa
+
+You may install and use Aether on computers you own or control.
+
+You may share the official installer as-is. You may not sell Aether, claim it as your own, or distribute modified builds without permission.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.

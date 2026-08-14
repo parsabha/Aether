@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Support Aether</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --accent: #0078f2;
+        --text: #f5f5f7;
+        --dim: rgba(245, 245, 247, 0.62);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(900px 420px at 50% -10%, rgba(0, 120, 242, 0.28), transparent 55%),
+          linear-gradient(180deg, #0c0e18, #07080e);
+        display: grid;
+        place-items: center;
+        padding: 32px 16px;
+      }
+      main {
+        width: min(520px, 100%);
+        background: rgba(22, 24, 38, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 22px;
+        padding: 28px 26px 24px;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+      }
+      h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -0.03em; }
+      p { color: var(--dim); line-height: 1.55; margin: 0 0 18px; }
+      .actions { display: grid; gap: 10px; }
+      a {
+        display: block;
+        text-decoration: none;
+        color: #fff;
+        background: linear-gradient(180deg, #1a8cff, var(--accent));
+        border-radius: 12px;
+        padding: 12px 14px;
+        text-align: center;
+        font-weight: 650;
+      }
+      a.secondary {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      a.hidden { display: none; }
+      .hint { font-size: 12px; margin-top: 16px; margin-bottom: 0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Support Aether</h1>
+      <p>
+        Aether is an independent Windows game launcher. If it is useful, you can
+        help keep development going with a donation, a paid download, or a star on GitHub.
+      </p>
+      <div class="actions">
+        <a class="secondary" href="https://github.com/parsabahemmat/Aether">Star / Sponsor on GitHub</a>
+        <a class="hidden" href="#">Get it on itch.io</a>
+        <a class="hidden secondary secondary" href="#">Donate on Ko-fi</a>
+        <a class="secondary secondary" href="https://github.com/sponsors/parsabahemmat">Donate</a>
+      </div>
+      <p class="hint">Thank you for using Aether.</p>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,38 @@
+fn main() {
+    tauri_build::try_build(
+        tauri_build::Attributes::new().app_manifest(
+            tauri_build::AppManifest::new().commands(&[
+                "get_library",
+                "get_settings",
+                "set_settings",
+                "add_games",
+                "update_game",
+                "remove_game",
+                "reorder_games",
+                "launch_game",
+                "recent_games",
+                "island_games",
+                "island_feed",
+                "island_dismiss_notification",
+                "island_clear_notifications",
+                "island_mark_notifications_read",
+                "island_media_toggle",
+                "island_media_next",
+                "island_media_previous",
+                "set_media_path",
+                "remove_screenshot",
+                "optimize_library",
+                "process_media_jobs",
+                "toggle_island",
+                "island_layout",
+                "show_main",
+                "get_displays",
+                "ffmpeg_available",
+                "import_nebula",
+                "open_folder",
+                "open_data_dir",
+            ]),
+        ),
+    )
+    .expect("failed to run tauri-build");
+}

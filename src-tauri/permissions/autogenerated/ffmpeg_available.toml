@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ffmpeg-available"
+description = "Enables the ffmpeg_available command without any pre-configured scope."
+commands.allow = ["ffmpeg_available"]
+
+[[permission]]
+identifier = "deny-ffmpeg-available"
+description = "Denies the ffmpeg_available command without any pre-configured scope."
+commands.deny = ["ffmpeg_available"]

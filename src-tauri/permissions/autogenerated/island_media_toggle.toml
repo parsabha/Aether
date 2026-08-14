@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-island-media-toggle"
+description = "Enables the island_media_toggle command without any pre-configured scope."
+commands.allow = ["island_media_toggle"]
+
+[[permission]]
+identifier = "deny-island-media-toggle"
+description = "Denies the island_media_toggle command without any pre-configured scope."
+commands.deny = ["island_media_toggle"]
