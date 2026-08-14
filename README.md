@@ -15,6 +15,10 @@
   <a href="https://github.com/parsabahemmat/Aether/releases/tag/v1.0.0">v1.0.0</a>
 </p>
 
+<p align="center">
+  <img src="docs/library.jpg" alt="Aether library" width="920">
+</p>
+
 ---
 
 Aether keeps your PC games in a local library with animated covers, playtime, and a detail page for each title. A compact island stays at the top of the screen so you can launch a game, skip a track, or check a notification without opening the main window.
