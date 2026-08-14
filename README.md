@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src-tauri/icons/icon.png" width="96" height="96" alt="Aether">
+  <img src="docs/aether.png" width="128" height="128" alt="Aether">
 </p>
 
 <h1 align="center">Aether</h1>

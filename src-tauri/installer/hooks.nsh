@@ -33,7 +33,14 @@
     StrCpy $0 "$SMPROGRAMS\${STARTMENUFOLDER}"
     CreateDirectory "$0"
   !endif
-  CreateShortCut "$0\Support Aether.lnk" "$INSTDIR\support.html" "" "$INSTDIR\${MAINBINARYNAME}.exe" 0
+  StrCpy $1 "$INSTDIR\${PRODUCTNAME}.ico"
+  IfFileExists "$1" +2 0
+    StrCpy $1 "$INSTDIR\${MAINBINARYNAME}.exe"
+  CreateShortCut "$0\Support Aether.lnk" "$INSTDIR\support.html" "" "$1" 0
+  CreateShortCut "$0\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "" "$1" 0
+  IfFileExists "$DESKTOP\${PRODUCTNAME}.lnk" 0 skip_desktop_icon
+    CreateShortCut "$DESKTOP\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "" "$1" 0
+  skip_desktop_icon:
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
