@@ -1,5 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useState, type CSSProperties } from "react";
 import { api } from "../../lib/api";
 import type { Game, MediaKind } from "../../lib/types";
@@ -61,6 +61,41 @@ function MediaTile({
   );
 }
 
+function ArtCard({
+  label,
+  hint,
+  url,
+  kind,
+  ratio,
+  onPick,
+}: {
+  label: string;
+  hint: string;
+  url?: string | null;
+  kind?: MediaKind | string | null;
+  ratio: "cover" | "banner" | "icon";
+  onPick: () => void;
+}) {
+  return (
+    <button type="button" className={`art-card art-${ratio}`} onClick={onPick}>
+      <div className="art-card-frame">
+        {url ? (
+          <AutoPlayMedia src={url} kind={kind || "image"} className="art-card-media" />
+        ) : (
+          <div className="art-card-empty">
+            <span className="art-card-plus">+</span>
+            <span>Add {label.toLowerCase()}</span>
+          </div>
+        )}
+      </div>
+      <div className="art-card-meta">
+        <strong>{label}</strong>
+        <span>{url ? hint : "Click to browse"}</span>
+      </div>
+    </button>
+  );
+}
+
 export function GameDetail({
   game,
   onBack,
@@ -75,6 +110,7 @@ export function GameDetail({
   reduceMotion?: boolean;
 }) {
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState({
     name: game.name,
@@ -95,6 +131,18 @@ export function GameDetail({
       accent: game.accent || "",
     });
   }, [game.id, game.name, game.description, game.category, game.args, game.tags, game.accent]);
+
+  useEffect(() => {
+    if (!editOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setEditOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [editOpen]);
 
   const pageAccent = draft.accent || game.accent || undefined;
 
@@ -146,6 +194,11 @@ export function GameDetail({
 
   const banner = game.bannerUrl || game.coverUrl;
   const bannerKind = game.bannerUrl ? game.bannerKind : game.coverKind;
+  const tags = (
+    draft.tags
+      ? draft.tags.split(",").map((t) => t.trim()).filter(Boolean)
+      : game.tags
+  );
 
   return (
     <div
@@ -157,17 +210,48 @@ export function GameDetail({
           <AutoPlayMedia src={banner} kind={bannerKind} className="detail-hero-media" />
         ) : (
           <div
-            className="detail-hero-media"
+            className="detail-hero-media detail-hero-fallback"
             style={{
-              background: `linear-gradient(135deg, color-mix(in srgb, var(--accent) 40%, #101018), #08080a)`,
+              background: `linear-gradient(135deg, color-mix(in srgb, var(--accent) 48%, #1a1a28), #0a0a10)`,
             }}
           />
         )}
         <div className="detail-hero-scrim" />
-        <div className="detail-hero-content">
-          <button className="back-btn" onClick={onBack}>
-            ← Library
+        <div className="detail-hero-vignette" />
+
+        <div className="detail-hero-top">
+          <button type="button" className="back-btn" onClick={onBack}>
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Library
           </button>
+          <button
+            type="button"
+            className="detail-icon-btn"
+            onClick={() => setEditOpen(true)}
+            title="Game settings"
+            aria-label="Game settings"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <path
+                d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              />
+              <path
+                d="M19.4 13a7.8 7.8 0 0 0 .05-2l2.05-1.6-2-3.46-2.45.8a7.7 7.7 0 0 0-1.73-1L14.9 3h-5.8l-.42 2.74a7.7 7.7 0 0 0-1.73 1l-2.45-.8-2 3.46L4.55 11a7.8 7.8 0 0 0 0 2l-2.05 1.6 2 3.46 2.45-.8a7.7 7.7 0 0 0 1.73 1L9.1 21h5.8l.42-2.74a7.7 7.7 0 0 0 1.73-1l2.45.8 2-3.46L19.4 13Z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div className="detail-hero-content">
           <div className="detail-hero-row">
             <div className="detail-cover">
               {game.coverUrl ? (
@@ -184,31 +268,39 @@ export function GameDetail({
                 </div>
               )}
             </div>
+
             <div className="detail-text">
+              <p className="detail-kicker">{game.category || "Games"}</p>
               <h1>{draft.name || game.name}</h1>
+
               <div className="detail-meta-row">
-                <span className="detail-chip">{game.category || "Games"}</span>
                 {game.running && <span className="detail-chip live">Playing now</span>}
                 {game.missing && <span className="detail-chip warn">Missing exe</span>}
                 <span className="detail-meta-stat">
                   <b>{fmtPlaytime(game.playtimeMs)}</b> played
                 </span>
+                <span className="detail-meta-dot" aria-hidden />
                 <span className="detail-meta-stat">
                   <b>{game.launchCount}</b> launches
                 </span>
-              </div>
-              {(game.tags.length > 0 || draft.tags) && (
-                <div className="tag-row">
-                  {(draft.tags
-                    ? draft.tags.split(",").map((t) => t.trim()).filter(Boolean)
-                    : game.tags
-                  ).map((t) => (
-                    <span key={t} className="tag">
-                      {t}
+                {game.lastPlayed ? (
+                  <>
+                    <span className="detail-meta-dot" aria-hidden />
+                    <span className="detail-meta-stat">
+                      Last <b>{fmtDate(game.lastPlayed)}</b>
                     </span>
+                  </>
+                ) : null}
+              </div>
+
+              {tags.length > 0 && (
+                <div className="tag-row">
+                  {tags.map((t) => (
+                    <span key={t} className="tag">{t}</span>
                   ))}
                 </div>
               )}
+
               <div className="detail-actions">
                 <motion.button
                   className="btn-play"
@@ -228,7 +320,7 @@ export function GameDetail({
                 )}
                 <button
                   type="button"
-                  className={`btn ${game.favorite ? "accent" : ""}`}
+                  className={`btn detail-ghost-btn ${game.favorite ? "accent" : ""}`}
                   onClick={async () =>
                     onChange(await api.updateGame(game.id, { favorite: !game.favorite }))
                   }
@@ -236,10 +328,17 @@ export function GameDetail({
                   {game.favorite ? "★ Favorited" : "☆ Favorite"}
                 </button>
                 {game.exePath && (
-                  <button type="button" className="btn" onClick={() => api.openFolder(game.exePath!)}>
+                  <button type="button" className="btn detail-ghost-btn" onClick={() => api.openFolder(game.exePath!)}>
                     Show in folder
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="btn detail-ghost-btn"
+                  onClick={() => setEditOpen(true)}
+                >
+                  Edit game
+                </button>
               </div>
             </div>
           </div>
@@ -248,204 +347,348 @@ export function GameDetail({
 
       <div className="detail-body">
         <div className="detail-main">
-          <div className="panel">
-            <h3>About</h3>
+          <section className="detail-section">
+            <header className="detail-section-head">
+              <h2>About</h2>
+            </header>
             {draft.description || game.description ? (
               <p className="detail-desc">{draft.description || game.description}</p>
             ) : (
-              <p className="detail-desc" style={{ opacity: 0.55 }}>
-                No description yet — add one in Customize.
+              <p className="detail-desc is-empty">
+                No description yet. Open <button type="button" className="detail-inline-link" onClick={() => setEditOpen(true)}>Edit game</button> to add one.
               </p>
             )}
-          </div>
+          </section>
 
-          <div className="panel">
-            <h3>Screenshots</h3>
-            <div className="shots-row">
-              {game.screenshotUrls.map((s) => (
-                <div key={s.path} className="shot-item">
-                  <img src={s.url} alt="" onClick={() => setLightbox(s.url)} />
-                  <button
-                    className="shot-del"
-                    title="Delete"
-                    onClick={async () => {
-                      await api.removeScreenshot(game.id, s.path);
-                      const lib = await api.getLibrary();
-                      const fresh = lib.find((x) => x.id === game.id);
-                      if (fresh) onChange(fresh);
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-              {!game.screenshotUrls.length && (
-                <p className="detail-desc" style={{ opacity: 0.55 }}>
-                  Press F9 in-game to capture (when Aether is running).
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <aside className="detail-side">
-          <div className="panel">
-            <h3>Stats</h3>
-            <div className="stat-grid">
-              <div className="stat">
-                <label>Playtime</label>
-                <strong>{fmtPlaytime(game.playtimeMs)}</strong>
-              </div>
-              <div className="stat">
-                <label>Launches</label>
-                <strong>{game.launchCount}</strong>
-              </div>
-              <div className="stat">
-                <label>Last played</label>
-                <strong style={{ fontSize: 12 }}>{fmtDate(game.lastPlayed)}</strong>
-              </div>
-              <div className="stat">
-                <label>Added</label>
-                <strong style={{ fontSize: 12 }}>{fmtDate(game.addedAt)}</strong>
-              </div>
-            </div>
-          </div>
-
-          <div className="panel customize">
-            <h3>Customize</h3>
-            <div className="media-grid">
-              <MediaTile
+          <section className="detail-section">
+            <header className="detail-section-head">
+              <h2>Artwork</h2>
+              <button type="button" className="detail-section-action" onClick={() => setEditOpen(true)}>
+                Manage
+              </button>
+            </header>
+            <div className="art-grid">
+              <ArtCard
                 label="Cover"
+                hint="Portrait art"
                 url={game.coverUrl}
                 kind={game.coverKind}
-                tall
+                ratio="cover"
                 onPick={() => pick("cover")}
               />
-              <MediaTile
+              <ArtCard
                 label="Banner"
+                hint="Wide hero image"
                 url={game.bannerUrl}
                 kind={game.bannerKind}
+                ratio="banner"
                 onPick={() => pick("banner")}
               />
-              <MediaTile
+              <ArtCard
                 label="Icon"
+                hint="Small mark"
                 url={game.iconUrl}
                 kind="image"
+                ratio="icon"
                 onPick={() => pick("icon")}
               />
             </div>
+          </section>
 
-            <div className="form-grid">
-              <label>
-                Name
-                <input
-                  value={draft.name}
-                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                  onBlur={save}
-                />
-              </label>
-              <label>
-                Category
-                <input
-                  value={draft.category}
-                  onChange={(e) => setDraft({ ...draft, category: e.target.value })}
-                  onBlur={save}
-                />
-              </label>
-              <label>
-                Description
-                <textarea
-                  rows={4}
-                  value={draft.description}
-                  onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-                  onBlur={save}
-                  placeholder="Short blurb for this game…"
-                />
-              </label>
-              <label>
-                Tags
-                <input
-                  value={draft.tags}
-                  onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
-                  onBlur={save}
-                  placeholder="fps, multiplayer, …"
-                />
-              </label>
-              <label>
-                Launch args
-                <input
-                  value={draft.args}
-                  onChange={(e) => setDraft({ ...draft, args: e.target.value })}
-                  onBlur={save}
-                  placeholder="-windowed …"
-                />
-              </label>
-              <label>
-                Accent (this game)
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <input
-                    type="color"
-                    value={draft.accent || "#0078f2"}
-                    onChange={(e) => setDraft({ ...draft, accent: e.target.value })}
-                    onBlur={save}
-                  />
-                  <button
-                    type="button"
-                    className="btn"
-                    style={{ padding: "6px 10px" }}
-                    onClick={() => {
-                      setDraft({ ...draft, accent: "" });
-                      api.updateGame(game.id, { accent: null }).then(onChange);
-                    }}
-                  >
-                    Clear
-                  </button>
-                </div>
-                <div className="swatches">
-                  {ACCENT_SWATCHES.map((c) => (
+          <section className="detail-section">
+            <header className="detail-section-head">
+              <h2>Screenshots</h2>
+              {game.screenshotUrls.length > 0 && (
+                <span className="detail-section-count">{game.screenshotUrls.length}</span>
+              )}
+            </header>
+            {game.screenshotUrls.length > 0 ? (
+              <div className="shots-grid">
+                {game.screenshotUrls.map((s) => (
+                  <div key={s.path} className="shot-item">
+                    <button type="button" className="shot-thumb" onClick={() => setLightbox(s.url)}>
+                      <img src={s.url} alt="" />
+                    </button>
                     <button
-                      key={c}
                       type="button"
-                      className={`swatch ${draft.accent?.toLowerCase() === c.toLowerCase() ? "active" : ""}`}
-                      style={{ background: c }}
-                      title={c}
-                      onClick={() => {
-                        setDraft({ ...draft, accent: c });
-                        api.updateGame(game.id, { accent: c }).then(onChange);
+                      className="shot-del"
+                      title="Delete"
+                      onClick={async () => {
+                        await api.removeScreenshot(game.id, s.path);
+                        const lib = await api.getLibrary();
+                        const fresh = lib.find((x) => x.id === game.id);
+                        if (fresh) onChange(fresh);
                       }}
-                    />
-                  ))}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="shots-empty">
+                <div className="shots-empty-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24">
+                    <rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                    <circle cx="9" cy="11" r="1.6" fill="currentColor" />
+                    <path d="M3 16l5-4 4 3 3-2 6 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                  </svg>
                 </div>
-              </label>
-              <label>
-                Executable
-                <div className="exe-row">
-                  <input readOnly value={game.exePath || ""} placeholder="No exe set" />
-                  <button type="button" className="btn" onClick={pickExe}>
-                    Browse…
-                  </button>
-                </div>
-              </label>
-            </div>
+                <p>No screenshots yet</p>
+                <span>Press F9 in-game while Aether is running to capture.</span>
+              </div>
+            )}
+          </section>
+        </div>
 
-            <div className="detail-actions" style={{ marginTop: 14 }}>
-              <button className="btn primary" disabled={saving} onClick={save}>
-                {saving ? "Saving…" : "Save changes"}
+        <aside className="detail-side">
+          <section className="detail-section detail-stats">
+            <header className="detail-section-head">
+              <h2>Stats</h2>
+            </header>
+            <div className="stat-list">
+              <div className="stat-row">
+                <label>Playtime</label>
+                <strong>{fmtPlaytime(game.playtimeMs)}</strong>
+              </div>
+              <div className="stat-row">
+                <label>Launches</label>
+                <strong>{game.launchCount}</strong>
+              </div>
+              <div className="stat-row">
+                <label>Last played</label>
+                <strong>{fmtDate(game.lastPlayed)}</strong>
+              </div>
+              <div className="stat-row">
+                <label>Added</label>
+                <strong>{fmtDate(game.addedAt)}</strong>
+              </div>
+              <div className="stat-row">
+                <label>Category</label>
+                <strong>{game.category || "Games"}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section className="detail-section detail-quick">
+            <header className="detail-section-head">
+              <h2>Quick actions</h2>
+            </header>
+            <div className="quick-actions">
+              <button type="button" className="quick-btn" onClick={() => setEditOpen(true)}>
+                <span>Settings</span>
+                <small>Name, media, accent</small>
               </button>
+              {game.exePath && (
+                <button type="button" className="quick-btn" onClick={() => api.openFolder(game.exePath!)}>
+                  <span>Open folder</span>
+                  <small>Reveal executable</small>
+                </button>
+              )}
               <button
-                className="btn danger"
+                type="button"
+                className="quick-btn danger"
                 onClick={async () => {
                   if (!confirm(`Remove ${game.name} from Aether?`)) return;
                   await api.removeGame(game.id);
                   onBack();
                 }}
               >
-                Remove game
+                <span>Remove game</span>
+                <small>From your library</small>
               </button>
             </div>
-          </div>
+          </section>
         </aside>
       </div>
+
+      <AnimatePresence>
+        {editOpen && (
+          <motion.div
+            key="game-edit"
+            className="modal-backdrop detail-edit-backdrop"
+            onClick={() => setEditOpen(false)}
+            initial={reduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={reduceMotion ? undefined : { opacity: 0 }}
+            transition={{ duration: 0.18 }}
+          >
+            <motion.div
+              className="detail-edit-panel"
+              onClick={(e) => e.stopPropagation()}
+              initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="settings-head">
+                <div>
+                  <h2>Game settings</h2>
+                  <p className="settings-sub">Artwork, details, and launch options</p>
+                </div>
+                <button type="button" className="tb-btn" onClick={() => setEditOpen(false)} aria-label="Close">
+                  ✕
+                </button>
+              </div>
+
+              <section className="set-section">
+                <h3>Artwork</h3>
+                <div className="media-grid">
+                  <MediaTile
+                    label="Cover"
+                    url={game.coverUrl}
+                    kind={game.coverKind}
+                    tall
+                    onPick={() => pick("cover")}
+                  />
+                  <MediaTile
+                    label="Banner"
+                    url={game.bannerUrl}
+                    kind={game.bannerKind}
+                    onPick={() => pick("banner")}
+                  />
+                  <MediaTile
+                    label="Icon"
+                    url={game.iconUrl}
+                    kind="image"
+                    onPick={() => pick("icon")}
+                  />
+                </div>
+              </section>
+
+              <section className="set-section">
+                <h3>Details</h3>
+                <div className="form-grid">
+                  <label>
+                    Name
+                    <input
+                      value={draft.name}
+                      onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                      onBlur={save}
+                    />
+                  </label>
+                  <label>
+                    Category
+                    <input
+                      value={draft.category}
+                      onChange={(e) => setDraft({ ...draft, category: e.target.value })}
+                      onBlur={save}
+                    />
+                  </label>
+                  <label>
+                    Description
+                    <textarea
+                      rows={4}
+                      value={draft.description}
+                      onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                      onBlur={save}
+                      placeholder="Short blurb for this game…"
+                    />
+                  </label>
+                  <label>
+                    Tags
+                    <input
+                      value={draft.tags}
+                      onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
+                      onBlur={save}
+                      placeholder="fps, multiplayer, …"
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <section className="set-section">
+                <h3>Launch</h3>
+                <div className="form-grid">
+                  <label>
+                    Launch args
+                    <input
+                      value={draft.args}
+                      onChange={(e) => setDraft({ ...draft, args: e.target.value })}
+                      onBlur={save}
+                      placeholder="-windowed …"
+                    />
+                  </label>
+                  <label>
+                    Executable
+                    <div className="exe-row">
+                      <input readOnly value={game.exePath || ""} placeholder="No exe set" />
+                      <button type="button" className="btn" onClick={pickExe}>
+                        Browse…
+                      </button>
+                    </div>
+                  </label>
+                </div>
+              </section>
+
+              <section className="set-section">
+                <h3>Accent</h3>
+                <div className="form-grid">
+                  <label>
+                    Color for this game
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <input
+                        type="color"
+                        value={draft.accent || "#0078f2"}
+                        onChange={(e) => setDraft({ ...draft, accent: e.target.value })}
+                        onBlur={save}
+                      />
+                      <button
+                        type="button"
+                        className="btn"
+                        style={{ padding: "6px 10px" }}
+                        onClick={() => {
+                          setDraft({ ...draft, accent: "" });
+                          api.updateGame(game.id, { accent: null }).then(onChange);
+                        }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className="swatches">
+                      {ACCENT_SWATCHES.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          className={`swatch ${draft.accent?.toLowerCase() === c.toLowerCase() ? "active" : ""}`}
+                          style={{ background: c }}
+                          title={c}
+                          onClick={() => {
+                            setDraft({ ...draft, accent: c });
+                            api.updateGame(game.id, { accent: c }).then(onChange);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </label>
+                </div>
+              </section>
+
+              <div className="detail-edit-footer">
+                <button
+                  type="button"
+                  className="btn danger"
+                  onClick={async () => {
+                    if (!confirm(`Remove ${game.name} from Aether?`)) return;
+                    await api.removeGame(game.id);
+                    onBack();
+                  }}
+                >
+                  Remove game
+                </button>
+                <div className="detail-edit-footer-right">
+                  <button type="button" className="btn" onClick={() => setEditOpen(false)}>
+                    Close
+                  </button>
+                  <button type="button" className="btn primary" disabled={saving} onClick={save}>
+                    {saving ? "Saving…" : "Save changes"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {lightbox && (
         <div className="lightbox" onClick={() => setLightbox(null)}>

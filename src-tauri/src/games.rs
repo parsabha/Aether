@@ -27,24 +27,46 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
+fn file_exists(path: &str) -> bool {
+    const TTL_MS: u128 = 8_000;
+    static CACHE: std::sync::OnceLock<parking_lot::Mutex<HashMap<String, (u128, bool)>>> =
+        std::sync::OnceLock::new();
+    let cache = CACHE.get_or_init(|| parking_lot::Mutex::new(HashMap::new()));
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    {
+        let map = cache.lock();
+        if let Some((at, ok)) = map.get(path) {
+            if now.saturating_sub(*at) < TTL_MS {
+                return *ok;
+            }
+        }
+    }
+    let ok = Path::new(path).exists();
+    cache.lock().insert(path.to_string(), (now, ok));
+    ok
+}
+
 fn path_exists(p: &Option<String>) -> bool {
-    p.as_ref().map(|s| Path::new(s).exists()).unwrap_or(false)
+    p.as_ref().map(|s| file_exists(s)).unwrap_or(false)
 }
 
 fn asset_url(path: &Option<String>) -> Option<String> {
     // Absolute filesystem path — frontend converts via convertFileSrc.
-    path.as_ref().filter(|p| Path::new(p).exists()).cloned()
+    path.as_ref().filter(|p| file_exists(p)).cloned()
 }
 
 fn cover_urls(g: &Game) -> (Option<String>, String) {
-    if g.cover_webm.as_ref().map(|p| Path::new(p).exists()).unwrap_or(false) {
+    if g.cover_webm.as_ref().map(|p| file_exists(p)).unwrap_or(false) {
         return (asset_url(&g.cover_webm), "video".into());
     }
     if let Some(c) = &g.cover {
-        if Path::new(c).exists() {
+        if file_exists(c) {
             if is_motion(Path::new(c)) {
                 // Prefer poster while waiting for transcode; never feed raw GIF to UI when poster exists
-                if g.cover_poster.as_ref().map(|p| Path::new(p).exists()).unwrap_or(false) {
+                if g.cover_poster.as_ref().map(|p| file_exists(p)).unwrap_or(false) {
                     return (asset_url(&g.cover_poster), "image".into());
                 }
                 return (asset_url(&g.cover), "gif".into());
@@ -52,20 +74,20 @@ fn cover_urls(g: &Game) -> (Option<String>, String) {
             return (asset_url(&g.cover), "image".into());
         }
     }
-    if g.cover_poster.as_ref().map(|p| Path::new(p).exists()).unwrap_or(false) {
+    if g.cover_poster.as_ref().map(|p| file_exists(p)).unwrap_or(false) {
         return (asset_url(&g.cover_poster), "image".into());
     }
     (None, "image".into())
 }
 
 fn banner_urls(g: &Game) -> (Option<String>, String) {
-    if g.banner_webm.as_ref().map(|p| Path::new(p).exists()).unwrap_or(false) {
+    if g.banner_webm.as_ref().map(|p| file_exists(p)).unwrap_or(false) {
         return (asset_url(&g.banner_webm), "video".into());
     }
     if let Some(c) = &g.banner {
-        if Path::new(c).exists() {
+        if file_exists(c) {
             if is_motion(Path::new(c)) {
-                if g.banner_poster.as_ref().map(|p| Path::new(p).exists()).unwrap_or(false) {
+                if g.banner_poster.as_ref().map(|p| file_exists(p)).unwrap_or(false) {
                     return (asset_url(&g.banner_poster), "image".into());
                 }
                 return (asset_url(&g.banner), "gif".into());
@@ -73,7 +95,7 @@ fn banner_urls(g: &Game) -> (Option<String>, String) {
             return (asset_url(&g.banner), "image".into());
         }
     }
-    if g.banner_poster.as_ref().map(|p| Path::new(p).exists()).unwrap_or(false) {
+    if g.banner_poster.as_ref().map(|p| file_exists(p)).unwrap_or(false) {
         return (asset_url(&g.banner_poster), "image".into());
     }
     (None, "image".into())
@@ -233,40 +255,69 @@ pub fn set_media_path(state: &AppState, id: &str, slot: &str, src: &str) -> Resu
 }
 
 #[cfg(windows)]
+fn is_elevated() -> bool {
+    use windows::Win32::UI::Shell::IsUserAnAdmin;
+    unsafe { IsUserAnAdmin().as_bool() }
+}
+
+#[cfg(windows)]
+fn wide(s: &str) -> Vec<u16> {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    OsStr::new(s).encode_wide().chain(Some(0)).collect()
+}
+
+#[cfg(windows)]
+fn shell_execute(exe: &str, args: &str, cwd: Option<&str>, verb: Option<&str>) -> Result<u32, String> {
+    use windows::core::PCWSTR;
+    use windows::Win32::UI::Shell::ShellExecuteW;
+    use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+    let file = wide(exe);
+    let params = wide(args);
+    let dir = cwd.map(wide);
+    let verb_w = verb.map(wide);
+    let ret = unsafe {
+        ShellExecuteW(
+            None,
+            verb_w
+                .as_ref()
+                .map(|v| PCWSTR(v.as_ptr()))
+                .unwrap_or(PCWSTR::null()),
+            PCWSTR(file.as_ptr()),
+            PCWSTR(params.as_ptr()),
+            dir.as_ref()
+                .map(|d| PCWSTR(d.as_ptr()))
+                .unwrap_or(PCWSTR::null()),
+            SW_SHOWNORMAL,
+        )
+    };
+    if (ret.0 as usize) <= 32 {
+        return Err("Failed to launch".into());
+    }
+    Ok(0)
+}
+
+#[cfg(windows)]
 fn launch_windows(exe: &str, args: &str, cwd: Option<&str>, as_admin: bool) -> Result<u32, String> {
     use std::os::windows::process::CommandExt;
     const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
     const DETACHED_PROCESS: u32 = 0x00000008;
 
-    if as_admin {
-        // ShellExecute runas
-        use std::ffi::OsStr;
-        use std::os::windows::ffi::OsStrExt;
-        use windows::core::PCWSTR;
-        use windows::Win32::UI::Shell::ShellExecuteW;
-        use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    let elevated = is_elevated();
+    let lower = exe.to_ascii_lowercase();
+    let needs_shell = lower.ends_with(".lnk")
+        || lower.ends_with(".bat")
+        || lower.ends_with(".cmd")
+        || lower.ends_with(".url");
 
-        fn wide(s: &str) -> Vec<u16> {
-            OsStr::new(s).encode_wide().chain(Some(0)).collect()
-        }
-        let file = wide(exe);
-        let params = wide(args);
-        let dir = cwd.map(wide);
-        let verb = wide("runas");
-        let ret = unsafe {
-            ShellExecuteW(
-                None,
-                PCWSTR(verb.as_ptr()),
-                PCWSTR(file.as_ptr()),
-                PCWSTR(params.as_ptr()),
-                dir.as_ref().map(|d| PCWSTR(d.as_ptr())).unwrap_or(PCWSTR::null()),
-                SW_SHOWNORMAL,
-            )
-        };
-        if (ret.0 as usize) <= 32 {
-            return Err("Failed to elevate / launch".into());
-        }
-        return Ok(0);
+    // `runas` always shows UAC. If Aether is already administrator, spawn
+    // normally so the game inherits elevation and opens with no prompt.
+    if as_admin && !elevated {
+        return shell_execute(exe, args, cwd, Some("runas"));
+    }
+    if needs_shell {
+        return shell_execute(exe, args, cwd, None);
     }
 
     let mut cmd = Command::new(exe);

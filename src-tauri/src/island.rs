@@ -23,7 +23,7 @@ pub fn ensure_island_window(app: &AppHandle) -> Result<WebviewWindow, String> {
     if let Some(win) = app.get_webview_window("island") {
         return Ok(win);
     }
-    let url = format!("{}/#island", ui_base())
+    let url = format!("{}/index.html#island", ui_base())
         .parse()
         .map_err(|e: url::ParseError| e.to_string())?;
     WebviewWindowBuilder::new(app, "island", WebviewUrl::External(url))
@@ -82,7 +82,6 @@ pub fn layout_island(
     win.set_position(PhysicalPosition::new(x, y))
         .map_err(|e| e.to_string())?;
     let _ = win.set_always_on_top(settings.island_on_top);
-    let _ = win.set_ignore_cursor_events(false);
     Ok(())
 }
 
@@ -124,34 +123,77 @@ pub fn toggle_island(app: &AppHandle, state: &AppState) -> Result<bool, String> 
 }
 
 pub fn start_clickthrough_loop(app: AppHandle) {
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_millis(16));
-        let Some(win) = app.get_webview_window("island") else {
-            continue;
-        };
-        if !win.is_visible().unwrap_or(false) {
-            continue;
-        }
+    std::thread::spawn(move || {
         #[cfg(windows)]
         {
-            use windows::Win32::Foundation::POINT;
-            use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
-            let mut pt = POINT::default();
-            if unsafe { GetCursorPos(&mut pt) }.is_err() {
-                continue;
+            use windows::Win32::Foundation::{HWND, POINT, RECT};
+            use windows::Win32::UI::WindowsAndMessaging::{
+                GetCursorPos, GetWindowLongPtrW, GetWindowRect, IsWindowVisible, SetWindowLongPtrW,
+                GWL_EXSTYLE, WS_EX_TRANSPARENT,
+            };
+
+            let mut last_ignore: Option<bool> = None;
+            let mut hwnd_bits: isize = 0;
+            let mut last_pill = (0i32, 0i32);
+            loop {
+                std::thread::sleep(std::time::Duration::from_millis(32));
+                let hwnd = if hwnd_bits != 0 {
+                    HWND(hwnd_bits as _)
+                } else {
+                    let Some(win) = app.get_webview_window("island") else {
+                        last_ignore = None;
+                        continue;
+                    };
+                    let Ok(native) = win.hwnd() else {
+                        continue;
+                    };
+                    hwnd_bits = native.0 as isize;
+                    HWND(native.0 as _)
+                };
+                unsafe {
+                    if !IsWindowVisible(hwnd).as_bool() {
+                        last_ignore = None;
+                        hwnd_bits = 0;
+                        continue;
+                    }
+                    let mut pt = POINT::default();
+                    if GetCursorPos(&mut pt).is_err() {
+                        continue;
+                    }
+                    let mut rect = RECT::default();
+                    if GetWindowRect(hwnd, &mut rect).is_err() {
+                        continue;
+                    }
+                    let pill_w = PILL_W.load(Ordering::Relaxed) as i32;
+                    let pill_h = PILL_H.load(Ordering::Relaxed) as i32;
+                    if (pill_w, pill_h) != last_pill {
+                        last_pill = (pill_w, pill_h);
+                        last_ignore = None;
+                    }
+                    let host_w = rect.right - rect.left;
+                    let px = rect.left + (host_w - pill_w) / 2;
+                    let py = rect.top + 6;
+                    let inside = pt.x >= px
+                        && pt.y >= py
+                        && pt.x <= px + pill_w
+                        && pt.y <= py + pill_h;
+                    let ignore = !inside;
+                    if last_ignore == Some(ignore) {
+                        continue;
+                    }
+                    last_ignore = Some(ignore);
+                    let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+                    let bit = WS_EX_TRANSPARENT.0 as isize;
+                    let next = if ignore { ex | bit } else { ex & !bit };
+                    if next != ex {
+                        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, next);
+                    }
+                }
             }
-            if let (Ok(pos), Ok(size)) = (win.outer_position(), win.outer_size()) {
-                let pill_w = PILL_W.load(Ordering::Relaxed) as i32;
-                let pill_h = PILL_H.load(Ordering::Relaxed) as i32;
-                let px = pos.x + (size.width as i32 - pill_w) / 2;
-                let py = pos.y + 6;
-                let pad = 4;
-                let inside = pt.x >= px - pad
-                    && pt.y >= py - pad
-                    && pt.x <= px + pill_w + pad
-                    && pt.y <= py + pill_h + pad;
-                let _ = win.set_ignore_cursor_events(!inside);
-            }
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = app;
         }
     });
 }

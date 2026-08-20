@@ -1,7 +1,9 @@
 use crate::games::AppState;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::OnceLock;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,6 +61,82 @@ static SYSTEM_CACHE: parking_lot::Mutex<Option<(i64, bool, Vec<IslandNotificatio
 #[cfg(windows)]
 static ART_CACHE: parking_lot::Mutex<Option<(String, Option<String>)>> =
     parking_lot::Mutex::new(None);
+
+/// Last media/toast snapshot from the background WinRT worker. IPC reads this
+/// instantly so a wedged Windows Runtime call cannot freeze the UI thread.
+#[derive(Clone, Default)]
+struct FeedSnapshot {
+    media: Option<IslandMedia>,
+    system: Vec<IslandNotification>,
+    system_access: bool,
+}
+
+static SNAPSHOT: parking_lot::Mutex<FeedSnapshot> = parking_lot::Mutex::new(FeedSnapshot {
+    media: None,
+    system: Vec::new(),
+    system_access: false,
+});
+
+enum WorkerCmd {
+    Toggle,
+    Next,
+    Prev,
+}
+
+static WORKER: OnceLock<Sender<WorkerCmd>> = OnceLock::new();
+
+pub fn start_worker() {
+    let _ = worker_tx();
+}
+
+fn worker_tx() -> &'static Sender<WorkerCmd> {
+    WORKER.get_or_init(|| {
+        let (tx, rx) = mpsc::channel();
+        let _ = std::thread::Builder::new()
+            .name("aether-island-feed".into())
+            .spawn(move || feed_worker(rx));
+        tx
+    })
+}
+
+fn feed_worker(rx: Receiver<WorkerCmd>) {
+    #[cfg(windows)]
+    unsafe {
+        use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+    }
+    #[cfg(windows)]
+    refresh_snapshot();
+    loop {
+        match rx.recv_timeout(Duration::from_millis(900)) {
+            Ok(WorkerCmd::Toggle) => {
+                let _ = media_toggle_now();
+            }
+            Ok(WorkerCmd::Next) => {
+                let _ = media_skip_next_now();
+            }
+            Ok(WorkerCmd::Prev) => {
+                let _ = media_skip_previous_now();
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                #[cfg(windows)]
+                refresh_snapshot();
+            }
+            Err(RecvTimeoutError::Disconnected) => break,
+        }
+    }
+}
+
+#[cfg(windows)]
+fn refresh_snapshot() {
+    let media = read_media_session();
+    let (system_access, system) = read_system_notifications();
+    *SNAPSHOT.lock() = FeedSnapshot {
+        media,
+        system,
+        system_access,
+    };
+}
 
 fn now_ms() -> i64 {
     SystemTime::now()
@@ -130,24 +208,22 @@ pub fn notify_session_end(
 }
 
 pub fn get_feed(state: &AppState) -> IslandFeed {
+    start_worker();
     let mut list = notifications(state).clone();
 
+    let snap = SNAPSHOT.lock().clone();
     #[cfg(windows)]
-    let system_access = {
-        let (allowed, system) = read_system_notifications();
-        list.extend(system);
-        allowed
-    };
-    #[cfg(not(windows))]
-    let system_access = false;
+    {
+        list.extend(snap.system.iter().cloned());
+    }
 
     list.sort_by(|a, b| b.created_at.cmp(&a.created_at));
     list.truncate(24);
 
     IslandFeed {
-        media: read_media_session(),
+        media: snap.media,
         notifications: list,
-        system_access,
+        system_access: snap.system_access,
     }
 }
 
@@ -184,7 +260,7 @@ pub fn island_clear_notifications(state: State<'_, AppState>) -> Result<bool, St
     notifications(&state).clear();
     #[cfg(windows)]
     {
-        let system = read_system_notifications().1;
+        let system = SNAPSHOT.lock().system.clone();
         let mut hidden = HIDDEN_SYSTEM.lock();
         for n in system {
             if !hidden.iter().any(|e| e == &n.id) {
@@ -204,7 +280,7 @@ pub fn island_mark_notifications_read(state: State<'_, AppState>) -> Result<bool
     }
     #[cfg(windows)]
     {
-        let system = read_system_notifications().1;
+        let system = SNAPSHOT.lock().system.clone();
         let mut seen = SEEN_SYSTEM.lock();
         for n in system {
             if !seen.iter().any(|e| e == &n.id) {
@@ -250,13 +326,28 @@ fn read_media_session() -> Option<IslandMedia> {
 }
 
 fn media_toggle() -> Result<bool, String> {
+    let _ = worker_tx().send(WorkerCmd::Toggle);
+    Ok(true)
+}
+
+fn media_skip_next() -> Result<bool, String> {
+    let _ = worker_tx().send(WorkerCmd::Next);
+    Ok(true)
+}
+
+fn media_skip_previous() -> Result<bool, String> {
+    let _ = worker_tx().send(WorkerCmd::Prev);
+    Ok(true)
+}
+
+fn media_toggle_now() -> Result<bool, String> {
     #[cfg(windows)]
     {
         let ok = with_current_session(|session| {
             let op = session
                 .TryTogglePlayPauseAsync()
                 .map_err(|e| e.to_string())?;
-            op.get().map_err(|e| e.to_string())
+            wait_op(&op, 600).ok_or_else(|| "media toggle timed out".into())
         });
         return match ok {
             Ok(true) => Ok(true),
@@ -272,12 +363,12 @@ fn media_toggle() -> Result<bool, String> {
     }
 }
 
-fn media_skip_next() -> Result<bool, String> {
+fn media_skip_next_now() -> Result<bool, String> {
     #[cfg(windows)]
     {
         let ok = with_current_session(|session| {
             let op = session.TrySkipNextAsync().map_err(|e| e.to_string())?;
-            op.get().map_err(|e| e.to_string())
+            wait_op(&op, 600).ok_or_else(|| "skip next timed out".into())
         });
         return match ok {
             Ok(true) => Ok(true),
@@ -293,14 +384,14 @@ fn media_skip_next() -> Result<bool, String> {
     }
 }
 
-fn media_skip_previous() -> Result<bool, String> {
+fn media_skip_previous_now() -> Result<bool, String> {
     #[cfg(windows)]
     {
         let ok = with_current_session(|session| {
             let op = session
                 .TrySkipPreviousAsync()
                 .map_err(|e| e.to_string())?;
-            op.get().map_err(|e| e.to_string())
+            wait_op(&op, 600).ok_or_else(|| "skip previous timed out".into())
         });
         return match ok {
             Ok(true) => Ok(true),
@@ -329,18 +420,59 @@ fn send_media_key(key: windows::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY)
 }
 
 #[cfg(windows)]
+fn wait_op<T>(op: &windows::Foundation::IAsyncOperation<T>, timeout_ms: u32) -> Option<T>
+where
+    T: windows::core::RuntimeType + 'static,
+{
+    use windows::Foundation::{AsyncOperationCompletedHandler, AsyncStatus};
+
+    let status = op.Status().ok()?;
+    if status != AsyncStatus::Started {
+        return op.GetResults().ok();
+    }
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    op.SetCompleted(&AsyncOperationCompletedHandler::new(move |_, _| {
+        let _ = tx.send(());
+        Ok(())
+    }))
+    .ok()?;
+    if rx
+        .recv_timeout(Duration::from_millis(timeout_ms as u64))
+        .is_err()
+    {
+        let _ = op.Cancel();
+        return None;
+    }
+    op.GetResults().ok()
+}
+
+#[cfg(windows)]
+fn smtc_manager(
+) -> Option<windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager> {
+    use windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager;
+
+    static SMTC: parking_lot::Mutex<
+        Option<GlobalSystemMediaTransportControlsSessionManager>,
+    > = parking_lot::Mutex::new(None);
+
+    if let Some(existing) = SMTC.lock().clone() {
+        return Some(existing);
+    }
+    let op = GlobalSystemMediaTransportControlsSessionManager::RequestAsync().ok()?;
+    let manager = wait_op(&op, 800)?;
+    *SMTC.lock() = Some(manager.clone());
+    Some(manager)
+}
+
+#[cfg(windows)]
 fn with_current_session<F>(f: F) -> Result<bool, String>
 where
     F: FnOnce(
         windows::Media::Control::GlobalSystemMediaTransportControlsSession,
     ) -> Result<bool, String>,
 {
-    use windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager;
-
-    let manager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync()
-        .map_err(|e| e.to_string())?
-        .get()
-        .map_err(|e| e.to_string())?;
+    let manager = smtc_manager().ok_or_else(|| "No media session manager".to_string())?;
     let session = manager
         .GetCurrentSession()
         .map_err(|e| e.to_string())?;
@@ -349,12 +481,7 @@ where
 
 #[cfg(windows)]
 fn read_media_session_windows() -> Option<IslandMedia> {
-    use windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager;
-
-    let manager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync()
-        .ok()?
-        .get()
-        .ok()?;
+    let manager = smtc_manager()?;
 
     // Prefer the OS "current" session, but fall back to any session that is
     // actually producing sound — browsers often are not the current session.
@@ -390,7 +517,10 @@ fn media_from_session(
     use windows::Media::Control::GlobalSystemMediaTransportControlsSessionPlaybackStatus as Status;
     use windows::Storage::Streams::DataReader;
 
-    let props = session.TryGetMediaPropertiesAsync().ok()?.get().ok()?;
+    let props = {
+        let op = session.TryGetMediaPropertiesAsync().ok()?;
+        wait_op(&op, 400)?
+    };
     let title = props.Title().map(|t| t.to_string()).unwrap_or_default();
     if title.trim().is_empty() {
         return None;
@@ -430,13 +560,17 @@ fn media_from_session(
         Some((key, art)) if key == art_key => art,
         _ => {
             let art = props.Thumbnail().ok().and_then(|thumb| {
-                let stream = thumb.OpenReadAsync().ok()?.get().ok()?;
+                let op = thumb.OpenReadAsync().ok()?;
+                let stream = wait_op(&op, 400)?;
                 let size = stream.Size().ok()? as u32;
                 if size == 0 || size > 1_048_576 {
                     return None;
                 }
                 let reader = DataReader::CreateDataReader(&stream).ok()?;
-                reader.LoadAsync(size).ok()?.get().ok()?;
+                let load = reader.LoadAsync(size).ok()?;
+                let load_op: windows::Foundation::IAsyncOperation<u32> =
+                    windows::core::Interface::cast(&load).ok()?;
+                wait_op(&load_op, 400)?;
                 let mut bytes = vec![0u8; size as usize];
                 reader.ReadBytes(&mut bytes).ok()?;
                 let b64 =
@@ -488,16 +622,9 @@ fn read_system_notifications_uncached() -> (bool, Vec<IslandNotification>) {
         return (false, Vec::new());
     };
 
-    let mut status = listener
+    let status = listener
         .GetAccessStatus()
         .unwrap_or(UserNotificationListenerAccessStatus::Unspecified);
-    if status != UserNotificationListenerAccessStatus::Allowed {
-        status = listener
-            .RequestAccessAsync()
-            .ok()
-            .and_then(|op| op.get().ok())
-            .unwrap_or(UserNotificationListenerAccessStatus::Denied);
-    }
     if status != UserNotificationListenerAccessStatus::Allowed {
         return (false, Vec::new());
     }
@@ -505,7 +632,7 @@ fn read_system_notifications_uncached() -> (bool, Vec<IslandNotification>) {
     let Some(items) = listener
         .GetNotificationsAsync(NotificationKinds::Toast)
         .ok()
-        .and_then(|op| op.get().ok())
+        .and_then(|op| wait_op(&op, 800))
     else {
         return (true, Vec::new());
     };

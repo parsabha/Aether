@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
+import { applyChrome } from "../lib/chrome";
 import type { Game, IslandMedia, IslandNotification } from "../lib/types";
 
 type IslandMode = "compact" | "peek" | "expanded";
@@ -150,7 +151,7 @@ export function IslandApp() {
     const [g, s] = await Promise.all([api.islandGames(), api.getSettings()]);
     setGames(g);
     setReduceMotion(!!s.reduceMotion);
-    if (s.accent) document.documentElement.style.setProperty("--accent", s.accent);
+    applyChrome(s);
   }, []);
 
   const loadFeed = useCallback(async () => {
@@ -167,20 +168,47 @@ export function IslandApp() {
   // A new toast or a track change gives the pill a brief, wider preview.
   const peek = useCallback((ms = 4200) => setPeekUntil(Date.now() + ms), []);
 
+  const loadBusy = useRef(false);
+  const gamesBusy = useRef(false);
   const load = useCallback(async () => {
-    await Promise.all([loadGames(), loadFeed()]);
-  }, [loadGames, loadFeed]);
+    if (loadBusy.current) return;
+    loadBusy.current = true;
+    try {
+      await loadFeed();
+    } finally {
+      loadBusy.current = false;
+    }
+  }, [loadFeed]);
+
+  const refreshGames = useCallback(async () => {
+    if (gamesBusy.current) return;
+    gamesBusy.current = true;
+    try {
+      await loadGames();
+    } finally {
+      gamesBusy.current = false;
+    }
+  }, [loadGames]);
 
   useEffect(() => {
     document.documentElement.classList.add("is-island");
     document.body.classList.add("is-island");
+    refreshGames();
     load();
     const t = window.setInterval(load, 2500);
+    const gamesT = window.setInterval(refreshGames, 20_000);
     const clockT = window.setInterval(() => setClock(new Date()), 30_000);
     let unLib: (() => void) | undefined;
     let unFeed: (() => void) | undefined;
-    api.onLibraryChanged(() => load()).then((u) => {
+    let unSet: (() => void) | undefined;
+    api.onLibraryChanged(() => refreshGames()).then((u) => {
       unLib = u;
+    });
+    api.onSettingsChanged((s) => {
+      setReduceMotion(!!s.reduceMotion);
+      applyChrome(s);
+    }).then((u) => {
+      unSet = u;
     });
     api.onIslandFeed(() => {
       loadFeed();
@@ -192,11 +220,13 @@ export function IslandApp() {
       document.documentElement.classList.remove("is-island");
       document.body.classList.remove("is-island");
       clearInterval(t);
+      clearInterval(gamesT);
       clearInterval(clockT);
       unLib?.();
       unFeed?.();
+      unSet?.();
     };
-  }, [load, loadFeed]);
+  }, [load, loadFeed, refreshGames, peek]);
 
   useEffect(() => {
     if (peekUntil <= Date.now()) return;
@@ -298,7 +328,7 @@ export function IslandApp() {
     n.gameId ? games.find((g) => g.id === n.gameId) : undefined;
 
   return (
-    <div className="island-root" onMouseEnter={onEnter} onMouseLeave={onLeave}>
+    <div className="island-root">
       <motion.div
         className={[
           "island-pill",
@@ -309,6 +339,8 @@ export function IslandApp() {
         ]
           .filter(Boolean)
           .join(" ")}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
         initial={false}
         animate={{
           width: pillW,

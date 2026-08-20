@@ -1,0 +1,1391 @@
+/* —— Design-language themes —— */
+
+html[data-theme]:not([data-theme="aether"]):not(.is-island),
+html[data-theme]:not([data-theme="aether"]):not(.is-island) body,
+html[data-theme]:not([data-theme="aether"]):not(.is-island) #root {
+  background: var(--shell);
+}
+
+/* ============================================================
+   AETHER — richer glass
+   ============================================================ */
+html[data-theme="aether"] .game-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 8px 24px rgba(0, 0, 0, 0.28);
+}
+html[data-theme="aether"] .game-card:hover {
+  box-shadow:
+    0 20px 44px rgba(0, 0, 0, 0.5),
+    0 8px 32px color-mix(in srgb, var(--c) 30%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+html[data-theme="aether"] .add-btn {
+  backdrop-filter: blur(16px) saturate(1.4);
+}
+
+/* ============================================================
+   SKEUOMORPHISM — modern instrument chassis
+   Space-gray ceramic body, aluminum extrusion, glass wells.
+   ============================================================ */
+html[data-theme="skeuo"] {
+  --accent-hover: color-mix(in srgb, var(--accent) 78%, #fff);
+  --bg: #14161c;
+  --bg-elevated: #1c1f26;
+  --bg-panel: #191c23;
+  --bg-hover: #252830;
+  --stroke: rgba(210, 222, 236, 0.1);
+  --stroke-strong: rgba(220, 230, 244, 0.2);
+  --text: #f1f4f8;
+  --text-dim: rgba(228, 236, 246, 0.64);
+  --text-faint: rgba(228, 236, 246, 0.38);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow: 0 18px 40px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.34);
+  --glass: #191c23;
+  --glass-strong: #15181e;
+  --shell: #12141a;
+  --tint: #12141a;
+  --glass-blur: 0px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: "Instrument Sans", Inter, sans-serif;
+  color-scheme: dark;
+}
+html[data-theme="skeuo"] .brand-name,
+html[data-theme="skeuo"] .page-head h1,
+html[data-theme="skeuo"] .settings-head h2,
+html[data-theme="skeuo"] .detail-text h1,
+html[data-theme="skeuo"] .empty h2 {
+  font-family: "Instrument Sans", Inter, sans-serif;
+  letter-spacing: -0.04em;
+  text-transform: none;
+  font-weight: 650;
+}
+html[data-theme="skeuo"]:not(.is-island) body::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 28%),
+    linear-gradient(180deg, rgba(16, 18, 24, 0.78), rgba(10, 12, 16, 0.9)),
+    url("/themes/skeuo-ceramic.jpg") center / 240px;
+  opacity: 1;
+  filter: none;
+}
+html[data-theme="skeuo"]:not(.is-island) body::after {
+  background:
+    radial-gradient(700px 420px at 12% -8%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 62%);
+  animation: none;
+  inset: 0;
+  opacity: 0.85;
+}
+html[data-theme="skeuo"] .titlebar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 42%, rgba(0, 0, 0, 0.18) 100%),
+    url("/themes/skeuo-aluminum.jpg") center / 180px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 1px 0 rgba(0, 0, 0, 0.45);
+}
+html[data-theme="skeuo"] .brand-mark {
+  border-radius: 7px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.45);
+}
+html[data-theme="skeuo"] .tb-btn {
+  border-radius: 9px;
+  background: linear-gradient(180deg, #3a3e48, #1e222a);
+  color: #e8eef6;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 2px 5px rgba(0, 0, 0, 0.35);
+}
+html[data-theme="skeuo"] .tb-btn:hover {
+  background: linear-gradient(180deg, #464b56, #262a32);
+  color: #fff;
+}
+html[data-theme="skeuo"] .sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.18), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%),
+    url("/themes/skeuo-ceramic.jpg") left / 260px;
+}
+html[data-theme="skeuo"] .add-btn {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 40%, rgba(0, 0, 0, 0.22) 100%),
+    linear-gradient(180deg, #32363f, #1c2028);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.4),
+    0 10px 22px rgba(0, 0, 0, 0.4);
+  border-radius: 16px;
+}
+html[data-theme="skeuo"] .add-btn::after { opacity: 0.35; }
+html[data-theme="skeuo"] .add-btn:hover {
+  transform: translateY(-1px);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(0, 0, 0, 0.18) 100%),
+    linear-gradient(180deg, #3a3f48, #22262e);
+}
+html[data-theme="skeuo"] .add-ico {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.45), transparent 48%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 72%, #fff), var(--accent));
+  border-radius: 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 6px 14px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+html[data-theme="skeuo"] .nav-item {
+  border-radius: 12px;
+}
+html[data-theme="skeuo"] .nav-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+html[data-theme="skeuo"] .nav-item.active {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.18));
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+html[data-theme="skeuo"] .nav-item em {
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+html[data-theme="skeuo"] .topbar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.12)),
+    #161920;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.35),
+    0 10px 24px rgba(0, 0, 0, 0.28);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-theme="skeuo"] .search input,
+html[data-theme="skeuo"] .select,
+html[data-theme="skeuo"] .form-grid input,
+html[data-theme="skeuo"] .form-grid textarea,
+html[data-theme="skeuo"] .form-grid select,
+html[data-theme="skeuo"] .set-row select {
+  background: #0b0c10;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 3px 10px rgba(0, 0, 0, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+html[data-theme="skeuo"] .view-toggle {
+  background: #0b0c10;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.55);
+}
+html[data-theme="skeuo"] .view-toggle button.active {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 48%),
+    var(--accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+html[data-theme="skeuo"] .game-card {
+  background: #0c0d12;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 12px 26px rgba(0, 0, 0, 0.42);
+  border-radius: 14px;
+}
+html[data-theme="skeuo"] .game-card:hover {
+  transform: translate3d(0, -4px, 0);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 18px 36px rgba(0, 0, 0, 0.5),
+    0 0 24px color-mix(in srgb, var(--c) 22%, transparent);
+}
+html[data-theme="skeuo"] .game-card-play {
+  background:
+    radial-gradient(120% 90% at 50% 12%, rgba(255, 255, 255, 0.5), transparent 46%),
+    linear-gradient(180deg, color-mix(in srgb, var(--c) 70%, #fff), var(--c));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 10px 24px rgba(0, 0, 0, 0.4);
+}
+html[data-theme="skeuo"] .list-row,
+html[data-theme="skeuo"] .panel,
+html[data-theme="skeuo"] .stat,
+html[data-theme="skeuo"] .set-section {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 42%),
+    #191c23;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 8px 18px rgba(0, 0, 0, 0.28);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-theme="skeuo"] .btn {
+  background: linear-gradient(180deg, #343844, #1e222a);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 3px 8px rgba(0, 0, 0, 0.32);
+}
+html[data-theme="skeuo"] .btn:hover {
+  background: linear-gradient(180deg, #3e4350, #242830);
+}
+html[data-theme="skeuo"] .btn.primary,
+html[data-theme="skeuo"] .btn-play {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.26), transparent 46%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 72%, #fff), var(--accent));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.28),
+    0 10px 22px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+html[data-theme="skeuo"] .toggle {
+  background: #0b0c10;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+html[data-theme="skeuo"] .toggle.on {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 78%, #fff), var(--accent));
+}
+html[data-theme="skeuo"] .toggle i {
+  background: radial-gradient(circle at 32% 28%, #fff, #d5dbe4 58%, #8b93a0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.45), inset 0 1px 0 #fff;
+}
+html[data-theme="skeuo"] .settings-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 28%),
+    url("/themes/skeuo-ceramic.jpg") center / 320px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 28px 64px rgba(0, 0, 0, 0.55);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-theme="skeuo"] .empty-mark {
+  background: linear-gradient(180deg, #3a3e48, #1e222a);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 12px 24px rgba(0, 0, 0, 0.4);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-theme="skeuo"] .detail-chip,
+html[data-theme="skeuo"] .tag {
+  background: rgba(0, 0, 0, 0.38);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+html[data-theme="skeuo"] .detail-cover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 18px 36px rgba(0, 0, 0, 0.5);
+}
+html[data-theme="skeuo"] .island-pill {
+  background: linear-gradient(180deg, #2a2e36, #0c0d10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================================
+   FLAT — Swiss poster, hard color, no fake depth
+   ============================================================ */
+html[data-theme="flat"] {
+  --accent-hover: color-mix(in srgb, var(--accent) 78%, #fff);
+  --bg: #090a0d;
+  --bg-elevated: #12141a;
+  --bg-panel: #101218;
+  --bg-hover: #1a1d26;
+  --stroke: #262a34;
+  --stroke-strong: #3a404c;
+  --text: #f5f6f8;
+  --text-dim: #9aa1ad;
+  --text-faint: #646b78;
+  --radius: 2px;
+  --radius-sm: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --shadow: 8px 8px 0 color-mix(in srgb, var(--accent) 80%, #000);
+  --shadow-soft: 4px 4px 0 #000;
+  --glass: #101218;
+  --glass-strong: #12141a;
+  --shell: #090a0d;
+  --tint: #090a0d;
+  --glass-blur: 0px;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  font-family: Outfit, Inter, sans-serif;
+  color-scheme: dark;
+}
+html[data-theme="flat"] .brand-name,
+html[data-theme="flat"] .page-head h1,
+html[data-theme="flat"] .settings-head h2,
+html[data-theme="flat"] .detail-text h1,
+html[data-theme="flat"] .empty h2 {
+  font-family: Outfit, sans-serif;
+  letter-spacing: -0.05em;
+  text-transform: none;
+}
+html[data-theme="flat"]:not(.is-island) body::before {
+  background:
+    linear-gradient(90deg, var(--accent) 0 8px, transparent 8px),
+    radial-gradient(circle 240px at 100% 0%, var(--accent), transparent 58%),
+    #090a0d;
+  opacity: 1;
+}
+html[data-theme="flat"]:not(.is-island) body::after {
+  background:
+    repeating-linear-gradient(-45deg, transparent, transparent 18px, color-mix(in srgb, var(--accent) 7%, transparent) 18px, color-mix(in srgb, var(--accent) 7%, transparent) 19px);
+  animation: none;
+  inset: 0;
+}
+html[data-theme="flat"] .titlebar {
+  background: #101218;
+  border-bottom: 2px solid #1c2028;
+}
+html[data-theme="flat"] .tb-btn { border-radius: 2px; }
+html[data-theme="flat"] .tb-btn:hover { background: var(--accent); color: #fff; }
+html[data-theme="flat"] .sidebar {
+  background: #101218;
+  border-right: 2px solid #1c2028;
+}
+html[data-theme="flat"] .add-btn {
+  background: var(--accent);
+  box-shadow: 6px 6px 0 #000;
+  border-radius: 2px;
+}
+html[data-theme="flat"] .add-btn::after { display: none; }
+html[data-theme="flat"] .add-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 #000;
+  background: var(--accent-hover);
+}
+html[data-theme="flat"] .add-ico {
+  background: #fff;
+  color: #090a0d;
+  border-radius: 2px;
+  box-shadow: none;
+}
+html[data-theme="flat"] .add-text small { color: rgba(255, 255, 255, 0.78); }
+html[data-theme="flat"] .nav-item { border-radius: 2px; }
+html[data-theme="flat"] .nav-item.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: none;
+}
+html[data-theme="flat"] .nav-item.active::before { display: none; }
+html[data-theme="flat"] .nav-item em {
+  background: #090a0d;
+  color: #fff;
+  border-radius: 0;
+}
+html[data-theme="flat"] .topbar {
+  background: #101218;
+  border: 2px solid #1c2028;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 4px;
+}
+html[data-theme="flat"] .search input,
+html[data-theme="flat"] .select,
+html[data-theme="flat"] .view-toggle,
+html[data-theme="flat"] .form-grid input,
+html[data-theme="flat"] .form-grid textarea,
+html[data-theme="flat"] .form-grid select {
+  background: #090a0d;
+  border: 2px solid #262a34;
+  border-radius: 2px;
+  box-shadow: none;
+}
+html[data-theme="flat"] .search input:focus,
+html[data-theme="flat"] .form-grid input:focus,
+html[data-theme="flat"] .form-grid textarea:focus {
+  box-shadow: 4px 4px 0 var(--accent);
+  border-color: var(--accent);
+}
+html[data-theme="flat"] .view-toggle button { border-radius: 2px; }
+html[data-theme="flat"] .view-toggle button.active { background: var(--accent); }
+html[data-theme="flat"] .game-card {
+  background: #12141a;
+  border: 2px solid #262a34;
+  box-shadow: none;
+  border-radius: 4px;
+}
+html[data-theme="flat"] .game-card::after { display: none; }
+html[data-theme="flat"] .game-card:hover {
+  transform: translate(-3px, -3px);
+  border-color: var(--c);
+  box-shadow: 7px 7px 0 var(--c);
+}
+html[data-theme="flat"] .game-card-play {
+  border-radius: 2px;
+  background: var(--c);
+  box-shadow: 4px 4px 0 #000;
+}
+html[data-theme="flat"] .list-row,
+html[data-theme="flat"] .panel,
+html[data-theme="flat"] .stat,
+html[data-theme="flat"] .set-section {
+  background: #12141a;
+  border: 2px solid #262a34;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 4px;
+}
+html[data-theme="flat"] .list-row:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 var(--accent);
+  border-color: var(--accent);
+}
+html[data-theme="flat"] .btn {
+  background: #1a1d26;
+  border: 2px solid #262a34;
+  border-radius: 2px;
+}
+html[data-theme="flat"] .btn:hover { background: #242833; border-color: #fff; }
+html[data-theme="flat"] .btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 4px 4px 0 #000;
+}
+html[data-theme="flat"] .btn.primary:hover,
+html[data-theme="flat"] .btn-play:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000;
+  filter: none;
+}
+html[data-theme="flat"] .btn-play {
+  background: var(--accent);
+  border-radius: 2px;
+  box-shadow: 5px 5px 0 #000;
+}
+html[data-theme="flat"] .btn-play::after { display: none; }
+html[data-theme="flat"] .toggle { background: #262a34; border-radius: 2px; }
+html[data-theme="flat"] .toggle.on { background: var(--accent); }
+html[data-theme="flat"] .toggle i { border-radius: 2px; box-shadow: none; }
+html[data-theme="flat"] .settings-panel {
+  background: #101218;
+  border: 2px solid #262a34;
+  box-shadow: 12px 12px 0 var(--accent);
+  border-radius: 4px;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-theme="flat"] .empty-mark {
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  box-shadow: 8px 8px 0 #000;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-theme="flat"] .empty-mark span { color: #fff; }
+html[data-theme="flat"] .detail-chip,
+html[data-theme="flat"] .tag {
+  border-radius: 0;
+  background: var(--accent);
+  border: none;
+  color: #fff;
+}
+html[data-theme="flat"] .detail-cover { box-shadow: 8px 8px 0 var(--accent); border-radius: 4px; }
+html[data-theme="flat"] .island-pill {
+  background: #090a0d;
+  box-shadow: 4px 4px 0 var(--accent);
+  border: 2px solid #1c2028;
+}
+
+/* ============================================================
+   NEUMORPHISM — one surface, colored light
+   ============================================================ */
+html[data-theme="neu"] {
+  --accent-hover: color-mix(in srgb, var(--accent) 78%, #fff);
+  --neu: #2a303c;
+  --neu-dark: #1c212a;
+  --neu-light: color-mix(in srgb, var(--accent) 14%, #3c4454);
+  --bg: #2a303c;
+  --bg-elevated: #2a303c;
+  --bg-panel: #2a303c;
+  --bg-hover: #303744;
+  --stroke: transparent;
+  --stroke-strong: transparent;
+  --text: #eef1f7;
+  --text-dim: #b3bbc8;
+  --text-faint: #7a8494;
+  --radius: 20px;
+  --radius-sm: 14px;
+  --radius-lg: 24px;
+  --radius-xl: 30px;
+  --shadow: 10px 10px 22px var(--neu-dark), -8px -8px 18px var(--neu-light);
+  --shadow-soft: 6px 6px 14px var(--neu-dark), -5px -5px 12px var(--neu-light);
+  --glass: #2a303c;
+  --glass-strong: #2a303c;
+  --shell: #2a303c;
+  --tint: #2a303c;
+  --glass-blur: 0px;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: Nunito, Inter, sans-serif;
+  color-scheme: dark;
+}
+html[data-theme="neu"] .brand-name,
+html[data-theme="neu"] .page-head h1,
+html[data-theme="neu"] .settings-head h2,
+html[data-theme="neu"] .detail-text h1,
+html[data-theme="neu"] .empty h2 {
+  font-family: Nunito, sans-serif;
+  letter-spacing: -0.03em;
+  text-transform: none;
+}
+html[data-theme="neu"]:not(.is-island) body::before {
+  background:
+    radial-gradient(800px 500px at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+    url("/themes/neu-grain.jpg") center / 280px,
+    #2a303c;
+  opacity: 1;
+}
+html[data-theme="neu"]:not(.is-island) body::after { display: none; }
+html[data-theme="neu"] .app-shell,
+html[data-theme="neu"] .sidebar,
+html[data-theme="neu"] .content,
+html[data-theme="neu"] .titlebar {
+  background: transparent;
+  border-color: transparent;
+}
+html[data-theme="neu"] .tb-btn,
+html[data-theme="neu"] .add-btn,
+html[data-theme="neu"] .topbar,
+html[data-theme="neu"] .list-row,
+html[data-theme="neu"] .panel,
+html[data-theme="neu"] .stat,
+html[data-theme="neu"] .set-section,
+html[data-theme="neu"] .btn,
+html[data-theme="neu"] .settings-panel,
+html[data-theme="neu"] .empty-mark,
+html[data-theme="neu"] .theme-card,
+html[data-theme="neu"] .material-card {
+  background: var(--neu);
+  border: none;
+  box-shadow: 6px 6px 14px var(--neu-dark), -5px -5px 12px var(--neu-light);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-theme="neu"] .tb-btn:hover,
+html[data-theme="neu"] .add-btn:hover,
+html[data-theme="neu"] .btn:hover,
+html[data-theme="neu"] .nav-item.active,
+html[data-theme="neu"] .list-row:hover,
+html[data-theme="neu"] .view-toggle button.active,
+html[data-theme="neu"] .theme-card.active,
+html[data-theme="neu"] .material-card.active {
+  background: var(--neu);
+  box-shadow: inset 4px 4px 10px var(--neu-dark), inset -3px -3px 8px var(--neu-light);
+  transform: none;
+  border-color: transparent;
+  color: var(--text);
+}
+html[data-theme="neu"] .add-btn::after { display: none; }
+html[data-theme="neu"] .add-ico {
+  background: var(--neu);
+  color: var(--accent);
+  box-shadow: inset 3px 3px 6px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+}
+html[data-theme="neu"] .nav-item { border-radius: 16px; }
+html[data-theme="neu"] .nav-item:hover {
+  background: var(--neu);
+  box-shadow: 4px 4px 8px var(--neu-dark), -3px -3px 7px var(--neu-light);
+}
+html[data-theme="neu"] .nav-item.active::before { display: none; }
+html[data-theme="neu"] .search input,
+html[data-theme="neu"] .select,
+html[data-theme="neu"] .view-toggle,
+html[data-theme="neu"] .form-grid input,
+html[data-theme="neu"] .form-grid textarea,
+html[data-theme="neu"] .form-grid select,
+html[data-theme="neu"] .set-row select {
+  background: var(--neu);
+  border: none;
+  box-shadow: inset 4px 4px 10px var(--neu-dark), inset -3px -3px 8px var(--neu-light);
+}
+html[data-theme="neu"] .game-card {
+  background: var(--neu);
+  border: none;
+  box-shadow: 10px 10px 22px var(--neu-dark), -8px -8px 18px var(--neu-light);
+  border-radius: 24px;
+}
+html[data-theme="neu"] .game-card::after { display: none; }
+html[data-theme="neu"] .game-card:hover {
+  transform: translate3d(0, -3px, 0);
+  border-color: transparent;
+  box-shadow: 14px 14px 28px var(--neu-dark), -10px -10px 20px var(--neu-light);
+}
+html[data-theme="neu"] .game-card-play,
+html[data-theme="neu"] .btn.primary,
+html[data-theme="neu"] .btn-play {
+  background: var(--neu);
+  color: var(--accent);
+  box-shadow: 6px 6px 14px var(--neu-dark), -5px -5px 12px var(--neu-light);
+}
+html[data-theme="neu"] .btn-play::after { display: none; }
+html[data-theme="neu"] .btn-play svg,
+html[data-theme="neu"] .game-card-play svg { fill: var(--accent); }
+html[data-theme="neu"] .toggle {
+  background: var(--neu);
+  box-shadow: inset 3px 3px 6px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+}
+html[data-theme="neu"] .toggle.on { background: color-mix(in srgb, var(--accent) 30%, var(--neu)); }
+html[data-theme="neu"] .toggle i {
+  background: var(--neu);
+  box-shadow: 3px 3px 6px var(--neu-dark), -2px -2px 5px var(--neu-light);
+}
+html[data-theme="neu"] .detail-chip,
+html[data-theme="neu"] .tag {
+  background: var(--neu);
+  border: none;
+  box-shadow: 3px 3px 6px var(--neu-dark), -2px -2px 5px var(--neu-light);
+  color: var(--text);
+}
+html[data-theme="neu"] .detail-cover {
+  box-shadow: 10px 10px 22px var(--neu-dark), -6px -6px 14px var(--neu-light);
+  border-radius: 24px;
+}
+html[data-theme="neu"] .island-pill {
+  background: var(--neu);
+  box-shadow: 8px 8px 18px #161920, -5px -5px 12px #3a4250;
+}
+
+/* ============================================================
+   MATERIAL — MD3 tonal, expressive
+   ============================================================ */
+html[data-theme="material"] {
+  --accent-hover: color-mix(in srgb, var(--accent) 78%, #fff);
+  --bg: #111318;
+  --bg-elevated: color-mix(in srgb, var(--accent) 12%, #1c1b22);
+  --bg-panel: color-mix(in srgb, var(--accent) 10%, #1c1b22);
+  --bg-hover: color-mix(in srgb, var(--accent) 16%, #2a2832);
+  --stroke: color-mix(in srgb, var(--accent) 20%, #33323a);
+  --stroke-strong: color-mix(in srgb, var(--accent) 32%, #44434c);
+  --text: #e8e4ea;
+  --text-dim: #c9c4d0;
+  --text-faint: #958f9c;
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.32), 0 6px 14px 3px rgba(0, 0, 0, 0.16);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 1px rgba(0, 0, 0, 0.14);
+  --glass: color-mix(in srgb, var(--accent) 10%, #1c1b22);
+  --glass-strong: color-mix(in srgb, var(--accent) 12%, #1c1b22);
+  --shell: #111318;
+  --tint: #111318;
+  --glass-blur: 0px;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  font-family: "DM Sans", Roboto, sans-serif;
+  color-scheme: dark;
+}
+html[data-theme="material"] .brand-name,
+html[data-theme="material"] .page-head h1,
+html[data-theme="material"] .settings-head h2,
+html[data-theme="material"] .detail-text h1,
+html[data-theme="material"] .empty h2,
+html[data-theme="material"] .panel h3 {
+  font-family: "DM Sans", sans-serif;
+  letter-spacing: -0.03em;
+  text-transform: none;
+}
+html[data-theme="material"]:not(.is-island) body::before {
+  background:
+    radial-gradient(900px 480px at 8% -12%, color-mix(in srgb, var(--accent) 32%, transparent), transparent 58%),
+    #111318;
+  opacity: 1;
+}
+html[data-theme="material"]:not(.is-island) body::after {
+  background: radial-gradient(640px 400px at 100% 100%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 62%);
+  animation: none;
+  inset: 0;
+}
+html[data-theme="material"] .titlebar {
+  background: color-mix(in srgb, var(--accent) 14%, #1c1b22);
+  border-bottom: none;
+}
+html[data-theme="material"] .tb-btn,
+html[data-theme="material"] .nav-item,
+html[data-theme="material"] .ghost-btn,
+html[data-theme="material"] .btn,
+html[data-theme="material"] .view-toggle button,
+html[data-theme="material"] .add-btn,
+html[data-theme="material"] .btn-play,
+html[data-theme="material"] .back-btn {
+  border-radius: 999px;
+}
+html[data-theme="material"] .sidebar {
+  background: color-mix(in srgb, var(--accent) 7%, #111318);
+  border-right: none;
+}
+html[data-theme="material"] .add-btn {
+  background: var(--accent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+html[data-theme="material"] .add-btn::after { display: none; }
+html[data-theme="material"] .add-ico {
+  background: #fff;
+  color: var(--accent);
+  border-radius: 999px;
+  box-shadow: none;
+}
+html[data-theme="material"] .nav-item.active {
+  background: color-mix(in srgb, var(--accent) 26%, #2b2930);
+  box-shadow: none;
+}
+html[data-theme="material"] .nav-item.active::before { display: none; }
+html[data-theme="material"] .topbar {
+  background: color-mix(in srgb, var(--accent) 12%, #1c1b22);
+  border: none;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 28px;
+}
+html[data-theme="material"] .search input,
+html[data-theme="material"] .select,
+html[data-theme="material"] .view-toggle,
+html[data-theme="material"] .form-grid input,
+html[data-theme="material"] .form-grid textarea,
+html[data-theme="material"] .form-grid select {
+  background: color-mix(in srgb, var(--accent) 10%, #2b2930);
+  border: none;
+  border-radius: 12px;
+  box-shadow: none;
+}
+html[data-theme="material"] .search input:focus,
+html[data-theme="material"] .form-grid input:focus {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  border: none;
+}
+html[data-theme="material"] .game-card {
+  background: color-mix(in srgb, var(--accent) 12%, #1c1b22);
+  border: none;
+  box-shadow: var(--shadow);
+  border-radius: 20px;
+}
+html[data-theme="material"] .game-card::after { display: none; }
+html[data-theme="material"] .game-card:hover {
+  transform: translate3d(0, -5px, 0);
+  border-color: transparent;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.32), 0 16px 32px color-mix(in srgb, var(--c) 18%, transparent);
+}
+html[data-theme="material"] .list-row,
+html[data-theme="material"] .panel,
+html[data-theme="material"] .stat,
+html[data-theme="material"] .set-section,
+html[data-theme="material"] .settings-panel,
+html[data-theme="material"] .theme-card,
+html[data-theme="material"] .material-card {
+  background: color-mix(in srgb, var(--accent) 10%, #1c1b22);
+  border: none;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-theme="material"] .btn.primary,
+html[data-theme="material"] .btn-play,
+html[data-theme="material"] .game-card-play {
+  background: var(--accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+html[data-theme="material"] .btn-play::after { display: none; }
+html[data-theme="material"] .toggle { background: #44434c; }
+html[data-theme="material"] .toggle.on { background: var(--accent); }
+html[data-theme="material"] .empty-mark {
+  background: color-mix(in srgb, var(--accent) 20%, #2b2930);
+  border: none;
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-theme="material"] .detail-chip,
+html[data-theme="material"] .tag {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border: none;
+  color: var(--text);
+}
+html[data-theme="material"] .island-pill {
+  background: color-mix(in srgb, var(--accent) 12%, #1c1b22);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.42);
+}
+
+/* ============================================================
+   CLAY — inflated 3D, candy-soft
+   ============================================================ */
+html[data-theme="clay"] {
+  --accent-hover: color-mix(in srgb, var(--accent) 78%, #fff);
+  --bg: #1b1d2a;
+  --bg-elevated: #242638;
+  --bg-panel: #222436;
+  --bg-hover: #2c2e44;
+  --stroke: transparent;
+  --stroke-strong: transparent;
+  --text: #f3f1ff;
+  --text-dim: #c4c2d8;
+  --text-faint: #8b89a6;
+  --radius: 26px;
+  --radius-sm: 18px;
+  --radius-lg: 28px;
+  --radius-xl: 34px;
+  --shadow: 0 18px 36px rgba(8, 8, 18, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --shadow-soft: 0 12px 24px rgba(8, 8, 18, 0.32);
+  --glass: #222436;
+  --glass-strong: #222436;
+  --shell: #1b1d2a;
+  --tint: #1b1d2a;
+  --glass-blur: 0px;
+  --ease: cubic-bezier(0.34, 1.3, 0.64, 1);
+  font-family: Nunito, Inter, sans-serif;
+  color-scheme: dark;
+}
+html[data-theme="clay"] .brand-name,
+html[data-theme="clay"] .page-head h1,
+html[data-theme="clay"] .settings-head h2,
+html[data-theme="clay"] .detail-text h1,
+html[data-theme="clay"] .empty h2 {
+  font-family: Nunito, sans-serif;
+  letter-spacing: -0.03em;
+  text-transform: none;
+}
+html[data-theme="clay"]:not(.is-island) body::before {
+  background:
+    radial-gradient(700px 480px at 12% -10%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 58%),
+    radial-gradient(560px 400px at 100% 100%, color-mix(in srgb, var(--accent) 16%, #7c5cff), transparent 60%),
+    #1b1d2a;
+  opacity: 1;
+}
+html[data-theme="clay"]:not(.is-island) body::after { display: none; }
+html[data-theme="clay"] .titlebar,
+html[data-theme="clay"] .sidebar {
+  background: transparent;
+  border-color: transparent;
+}
+html[data-theme="clay"] .tb-btn,
+html[data-theme="clay"] .add-btn,
+html[data-theme="clay"] .nav-item.active,
+html[data-theme="clay"] .topbar,
+html[data-theme="clay"] .list-row,
+html[data-theme="clay"] .panel,
+html[data-theme="clay"] .stat,
+html[data-theme="clay"] .set-section,
+html[data-theme="clay"] .btn,
+html[data-theme="clay"] .settings-panel,
+html[data-theme="clay"] .empty-mark,
+html[data-theme="clay"] .theme-card,
+html[data-theme="clay"] .material-card {
+  background: linear-gradient(180deg, #32344a, #222436);
+  border: none;
+  box-shadow:
+    0 14px 28px rgba(8, 8, 20, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.22);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-theme="clay"] .add-btn::after { display: none; }
+html[data-theme="clay"] .add-btn:hover,
+html[data-theme="clay"] .game-card:hover {
+  transform: translateY(-4px) scale(1.01);
+}
+html[data-theme="clay"] .add-ico {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.5), transparent 50%),
+    var(--accent);
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 8px 16px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+html[data-theme="clay"] .nav-item { border-radius: 18px; }
+html[data-theme="clay"] .nav-item.active::before { display: none; }
+html[data-theme="clay"] .search input,
+html[data-theme="clay"] .select,
+html[data-theme="clay"] .view-toggle,
+html[data-theme="clay"] .form-grid input,
+html[data-theme="clay"] .form-grid textarea,
+html[data-theme="clay"] .form-grid select {
+  background: #1a1c28;
+  border: none;
+  border-radius: 16px;
+  box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+html[data-theme="clay"] .game-card {
+  background: linear-gradient(180deg, #32344a, #1e2030);
+  border: none;
+  border-radius: 28px;
+  box-shadow:
+    0 18px 36px rgba(8, 8, 20, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -14px 22px rgba(0, 0, 0, 0.28);
+}
+html[data-theme="clay"] .game-card::after { display: none; }
+html[data-theme="clay"] .game-card:hover {
+  border-color: transparent;
+  box-shadow:
+    0 24px 44px color-mix(in srgb, var(--c) 28%, rgba(8, 8, 20, 0.5)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+html[data-theme="clay"] .game-card-play,
+html[data-theme="clay"] .btn.primary,
+html[data-theme="clay"] .btn-play {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.4), transparent 48%),
+    var(--accent);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 10px 22px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+html[data-theme="clay"] .btn-play::after { display: none; }
+html[data-theme="clay"] .toggle {
+  background: #1a1c28;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+html[data-theme="clay"] .toggle.on { background: var(--accent); }
+html[data-theme="clay"] .toggle i {
+  background: radial-gradient(circle at 30% 30%, #fff, #e4e2f4);
+}
+html[data-theme="clay"] .detail-chip,
+html[data-theme="clay"] .tag {
+  background: linear-gradient(180deg, #32344a, #222436);
+  border: none;
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+html[data-theme="clay"] .island-pill {
+  background: linear-gradient(180deg, #32344a, #161822);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+/* ============================================================
+   PRISM — iridescent holographic glass
+   ============================================================ */
+html[data-theme="prism"] {
+  --accent-hover: color-mix(in srgb, var(--accent) 78%, #fff);
+  --bg: #090910;
+  --bg-elevated: rgba(24, 24, 38, 0.72);
+  --bg-panel: rgba(20, 20, 34, 0.7);
+  --bg-hover: rgba(40, 36, 60, 0.55);
+  --stroke: rgba(255, 255, 255, 0.14);
+  --stroke-strong: rgba(255, 255, 255, 0.24);
+  --text: #f7f5ff;
+  --text-dim: rgba(236, 232, 255, 0.68);
+  --text-faint: rgba(236, 232, 255, 0.4);
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.32);
+  --glass: rgba(255, 255, 255, 0.05);
+  --glass-strong: rgba(16, 14, 28, 0.72);
+  --shell: #090910;
+  --tint: rgba(8, 8, 16, 0.72);
+  --glass-blur: 18px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: Syne, Inter, sans-serif;
+  color-scheme: dark;
+}
+html[data-theme="prism"] .brand-name,
+html[data-theme="prism"] .page-head h1,
+html[data-theme="prism"] .settings-head h2,
+html[data-theme="prism"] .detail-text h1,
+html[data-theme="prism"] .empty h2 {
+  font-family: Syne, sans-serif;
+  letter-spacing: -0.04em;
+  text-transform: none;
+}
+html[data-theme="prism"]:not(.is-island) body::before {
+  background:
+    radial-gradient(600px 400px at 12% 8%, rgba(103, 232, 249, 0.28), transparent 60%),
+    radial-gradient(520px 380px at 92% 12%, rgba(192, 132, 252, 0.28), transparent 58%),
+    radial-gradient(480px 360px at 70% 90%, rgba(244, 114, 182, 0.18), transparent 60%),
+    #090910;
+  opacity: 1;
+}
+html[data-theme="prism"]:not(.is-island) body::after {
+  background: url("/themes/prism-shimmer.jpg") center / 280px;
+  mix-blend-mode: overlay;
+  opacity: 0.35;
+  animation: prism-shift 32s linear infinite;
+  inset: 0;
+}
+@keyframes prism-shift { to { filter: hue-rotate(360deg); } }
+html.reduce-motion[data-theme="prism"] body::after { animation: none; }
+html[data-theme="prism"] .titlebar,
+html[data-theme="prism"] .sidebar,
+html[data-theme="prism"] .topbar,
+html[data-theme="prism"] .panel,
+html[data-theme="prism"] .settings-panel,
+html[data-theme="prism"] .set-section,
+html[data-theme="prism"] .list-row {
+  background: rgba(16, 14, 28, 0.55);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px) saturate(1.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+}
+html[data-theme="prism"] .add-btn,
+html[data-theme="prism"] .game-card,
+html[data-theme="prism"] .btn.primary,
+html[data-theme="prism"] .btn-play {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(12, 10, 22, 0.8)) padding-box,
+    conic-gradient(from 140deg, #67e8f9, #c084fc, #f472b6, #67e8f9) border-box;
+}
+html[data-theme="prism"] .add-btn::after { opacity: 0.5; }
+html[data-theme="prism"] .nav-item.active {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+html[data-theme="prism"] .game-card:hover {
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(192, 132, 252, 0.28);
+}
+html[data-theme="prism"] .search input,
+html[data-theme="prism"] .select,
+html[data-theme="prism"] .form-grid input,
+html[data-theme="prism"] .form-grid textarea {
+  background: rgba(8, 8, 16, 0.65);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+html[data-theme="prism"] .toggle.on {
+  background: linear-gradient(90deg, #67e8f9, #c084fc);
+}
+html[data-theme="prism"] .island-pill {
+  background: #0a0a12;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(192, 132, 252, 0.2);
+}
+
+/* ============================================================
+   NOIR — cinematic OLED, spot color
+   ============================================================ */
+html[data-theme="noir"] {
+  --accent-hover: color-mix(in srgb, var(--accent) 78%, #fff);
+  --bg: #050505;
+  --bg-elevated: #0c0c0c;
+  --bg-panel: #0a0a0a;
+  --bg-hover: #141414;
+  --stroke: #222;
+  --stroke-strong: #333;
+  --text: #f3f3f3;
+  --text-dim: #9a9a9a;
+  --text-faint: #5c5c5c;
+  --radius: 0px;
+  --radius-sm: 0px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --shadow: none;
+  --shadow-soft: none;
+  --glass: #0a0a0a;
+  --glass-strong: #0a0a0a;
+  --shell: #050505;
+  --tint: #050505;
+  --glass-blur: 0px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: "IBM Plex Sans", Inter, sans-serif;
+  color-scheme: dark;
+}
+html[data-theme="noir"] .brand-name,
+html[data-theme="noir"] .page-head h1,
+html[data-theme="noir"] .settings-head h2,
+html[data-theme="noir"] .detail-text h1,
+html[data-theme="noir"] .empty h2 {
+  font-family: "IBM Plex Sans", sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+html[data-theme="noir"] .page-head h1,
+html[data-theme="noir"] .detail-text h1 {
+  letter-spacing: -0.03em;
+  text-transform: none;
+  font-weight: 700;
+}
+html[data-theme="noir"]:not(.is-island) body::before {
+  background: #050505;
+  opacity: 1;
+}
+html[data-theme="noir"]:not(.is-island) body::after {
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.015) 2px, rgba(255, 255, 255, 0.015) 3px);
+  animation: none;
+  inset: 0;
+}
+html[data-theme="noir"] .titlebar,
+html[data-theme="noir"] .sidebar,
+html[data-theme="noir"] .topbar,
+html[data-theme="noir"] .panel,
+html[data-theme="noir"] .settings-panel,
+html[data-theme="noir"] .set-section,
+html[data-theme="noir"] .list-row,
+html[data-theme="noir"] .stat {
+  background: #0a0a0a;
+  border: 1px solid #222;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 0;
+}
+html[data-theme="noir"] .tb-btn,
+html[data-theme="noir"] .nav-item,
+html[data-theme="noir"] .btn,
+html[data-theme="noir"] .search input,
+html[data-theme="noir"] .select,
+html[data-theme="noir"] .view-toggle,
+html[data-theme="noir"] .form-grid input,
+html[data-theme="noir"] .form-grid textarea {
+  border-radius: 0;
+}
+html[data-theme="noir"] .add-btn {
+  background: transparent;
+  border: 1px solid #fff;
+  box-shadow: none;
+  border-radius: 0;
+  color: #fff;
+}
+html[data-theme="noir"] .add-btn::after { display: none; }
+html[data-theme="noir"] .add-btn:hover {
+  background: #fff;
+  color: #050505;
+  transform: none;
+}
+html[data-theme="noir"] .add-btn:hover .add-text small { color: #444; }
+html[data-theme="noir"] .add-ico {
+  background: var(--accent);
+  border-radius: 0;
+  box-shadow: none;
+}
+html[data-theme="noir"] .nav-item.active {
+  background: #fff;
+  color: #050505;
+  box-shadow: none;
+}
+html[data-theme="noir"] .nav-item.active::before { display: none; }
+html[data-theme="noir"] .game-card {
+  background: #0a0a0a;
+  border: 1px solid #222;
+  box-shadow: none;
+  border-radius: 2px;
+}
+html[data-theme="noir"] .game-card::after {
+  background: var(--c);
+  height: 3px;
+  opacity: 1;
+  transform: none;
+  left: 0; right: 0;
+}
+html[data-theme="noir"] .game-card:hover {
+  transform: none;
+  border-color: #fff;
+  box-shadow: none;
+}
+html[data-theme="noir"] .game-card-play,
+html[data-theme="noir"] .btn.primary,
+html[data-theme="noir"] .btn-play {
+  background: var(--accent);
+  border-radius: 0;
+  box-shadow: none;
+}
+html[data-theme="noir"] .btn-play::after { display: none; }
+html[data-theme="noir"] .toggle { border-radius: 0; background: #222; }
+html[data-theme="noir"] .toggle i { border-radius: 0; }
+html[data-theme="noir"] .detail-chip,
+html[data-theme="noir"] .tag {
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid #fff;
+  color: #fff;
+}
+html[data-theme="noir"] .island-pill {
+  background: #000;
+  box-shadow: none;
+  border: 1px solid #222;
+}
+
+/* ============================================================
+   PAPER — editorial light
+   ============================================================ */
+html[data-theme="paper"] {
+  --accent-hover: color-mix(in srgb, var(--accent) 70%, #1a1814);
+  --bg: #f3eee6;
+  --bg-elevated: #faf7f1;
+  --bg-panel: #fffdf8;
+  --bg-hover: #ece6db;
+  --stroke: #e0d8ca;
+  --stroke-strong: #cfc5b4;
+  --text: #1c1915;
+  --text-dim: #5c564c;
+  --text-faint: #8a8376;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --shadow: 0 18px 40px rgba(40, 30, 16, 0.12);
+  --shadow-soft: 0 8px 20px rgba(40, 30, 16, 0.08);
+  --glass: #fffdf8;
+  --glass-strong: #faf7f1;
+  --shell: #f3eee6;
+  --tint: #f3eee6;
+  --glass-blur: 0px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: Inter, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+html[data-theme="paper"] .brand-name,
+html[data-theme="paper"] .page-head h1,
+html[data-theme="paper"] .settings-head h2,
+html[data-theme="paper"] .detail-text h1,
+html[data-theme="paper"] .empty h2,
+html[data-theme="paper"] .panel h3 {
+  font-family: Newsreader, Georgia, serif;
+  letter-spacing: -0.03em;
+  text-transform: none;
+  font-weight: 600;
+}
+html[data-theme="paper"]:not(.is-island) body::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(243, 238, 230, 0.82)),
+    url("/themes/paper-fiber.jpg") center / 280px;
+  opacity: 1;
+}
+html[data-theme="paper"]:not(.is-island) body::after { display: none; }
+html[data-theme="paper"] .titlebar,
+html[data-theme="paper"] .sidebar {
+  background: rgba(255, 253, 248, 0.72);
+  border-color: #e0d8ca;
+}
+html[data-theme="paper"] .tb-btn { color: #5c564c; }
+html[data-theme="paper"] .tb-btn:hover { background: #ece6db; color: #1c1915; }
+html[data-theme="paper"] .add-btn {
+  background: #1c1915;
+  color: #faf7f1;
+  box-shadow: 0 10px 24px rgba(28, 25, 21, 0.18);
+}
+html[data-theme="paper"] .add-btn:hover {
+  background: #2a2620;
+  transform: translateY(-1px);
+}
+html[data-theme="paper"] .add-ico {
+  background: var(--accent);
+  box-shadow: none;
+}
+html[data-theme="paper"] .add-text small { color: rgba(250, 247, 241, 0.62); }
+html[data-theme="paper"] .nav-item.active {
+  background: #1c1915;
+  color: #faf7f1;
+  box-shadow: none;
+}
+html[data-theme="paper"] .nav-item.active::before { display: none; }
+html[data-theme="paper"] .nav-item:hover,
+html[data-theme="paper"] .ghost-btn:hover {
+  background: #ece6db;
+  color: #1c1915;
+}
+html[data-theme="paper"] .nav-item em {
+  background: #ece6db;
+  color: #5c564c;
+}
+html[data-theme="paper"] .topbar,
+html[data-theme="paper"] .panel,
+html[data-theme="paper"] .set-section,
+html[data-theme="paper"] .settings-panel,
+html[data-theme="paper"] .list-row,
+html[data-theme="paper"] .stat {
+  background: #fffdf8;
+  border: 1px solid #e0d8ca;
+  box-shadow: 0 10px 28px rgba(40, 30, 16, 0.08);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-theme="paper"] .search input,
+html[data-theme="paper"] .select,
+html[data-theme="paper"] .view-toggle,
+html[data-theme="paper"] .form-grid input,
+html[data-theme="paper"] .form-grid textarea,
+html[data-theme="paper"] .form-grid select {
+  background: #f3eee6;
+  border: 1px solid #e0d8ca;
+  color: #1c1915;
+}
+html[data-theme="paper"] .game-card {
+  background: #fff;
+  border: 1px solid #e0d8ca;
+  box-shadow: 0 14px 32px rgba(40, 30, 16, 0.12);
+  border-radius: 6px;
+}
+html[data-theme="paper"] .game-card:hover {
+  transform: translate3d(0, -4px, 0);
+  box-shadow: 0 22px 40px rgba(40, 30, 16, 0.16);
+}
+html[data-theme="paper"] .game-card-name { text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45); color: #fff; }
+html[data-theme="paper"] .btn {
+  background: #f3eee6;
+  border-color: #e0d8ca;
+  color: #1c1915;
+}
+html[data-theme="paper"] .btn:hover { background: #ece6db; }
+html[data-theme="paper"] .btn.primary,
+html[data-theme="paper"] .btn-play,
+html[data-theme="paper"] .game-card-play,
+html[data-theme="paper"] .view-toggle button.active {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+html[data-theme="paper"] .toggle { background: #ddd4c6; }
+html[data-theme="paper"] .toggle.on { background: var(--accent); }
+html[data-theme="paper"] .empty-mark {
+  background: #fffdf8;
+  border: 1px solid #e0d8ca;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: #1c1915;
+}
+html[data-theme="paper"] .empty-mark span { color: #1c1915; }
+html[data-theme="paper"] .empty h2 { color: #1c1915; }
+html[data-theme="paper"] .empty p { color: #5c564c; }
+html[data-theme="paper"] .detail-chip,
+html[data-theme="paper"] .tag {
+  background: #ece6db;
+  border-color: #e0d8ca;
+  color: #1c1915;
+}
+html[data-theme="paper"] .modal-backdrop { background: rgba(40, 30, 16, 0.35); }
+html[data-theme="paper"] .island-pill {
+  background: #1c1915;
+  box-shadow: 0 12px 28px rgba(28, 25, 21, 0.28);
+}
+html[data-theme="paper"] * { scrollbar-color: #cfc5b4 transparent; }
+html[data-theme="paper"] .theme-preview { border-color: #e0d8ca; }
+
+html.reduce-motion[data-theme="flat"] .add-btn:hover,
+html.reduce-motion[data-theme="flat"] .game-card:hover,
+html.reduce-motion[data-theme="flat"] .btn.primary:hover,
+html.reduce-motion[data-theme="flat"] .btn-play:hover,
+html.reduce-motion[data-theme="flat"] .list-row:hover,
+html.reduce-motion[data-theme="clay"] .add-btn:hover,
+html.reduce-motion[data-theme="clay"] .game-card:hover {
+  transform: none;
+}

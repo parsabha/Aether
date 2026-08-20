@@ -1,6 +1,6 @@
 [package]
 name = "aether"
-version = "1.0.0"
+version = "1.1.0"
 description = "Aether — liquid glass game launcher for Windows"
 authors = ["Parsa"]
 edition = "2021"
@@ -32,7 +32,7 @@ dirs = "6"
 base64 = "0.22"
 thiserror = "2"
 parking_lot = "0.12"
-tauri-plugin-localhost = "2.3.2"
+tiny_http = "0.12"
 url = "2.5.8"
 
 [target.'cfg(windows)'.dependencies]
@@ -50,6 +50,7 @@ windows = { version = "0.58", features = [
   "Win32_Media_Audio",
   "Win32_Media_Audio_Endpoints",
   "Win32_System_Com",
+  "Foundation",
   "Media_Control",
   "Storage_Streams",
   "Foundation_Collections",

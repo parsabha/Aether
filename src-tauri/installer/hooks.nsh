@@ -8,7 +8,7 @@
 !define MUI_HEADERIMAGE_UNBITMAP_NOSTRETCH
 
 !define MUI_WELCOMEPAGE_TITLE "Welcome to Aether"
-!define MUI_WELCOMEPAGE_TEXT "Aether is a liquid-glass game launcher for Windows, with a Dynamic Island on your desktop.$\r$\n$\r$\nSetup will install Aether for your user account — no administrator password needed.$\r$\n$\r$\nClick Next to continue."
+!define MUI_WELCOMEPAGE_TEXT "Aether is a liquid-glass game launcher for Windows, with a Dynamic Island on your desktop.$\r$\n$\r$\nSetup will install Aether for your user account. Aether runs as administrator so games start without extra prompts.$\r$\n$\r$\nClick Next to continue."
 
 !define MUI_LICENSEPAGE_TEXT_TOP "Please review the license before installing Aether."
 !define MUI_LICENSEPAGE_TEXT_BOTTOM "If you accept the terms, click I Agree to continue."

@@ -63,7 +63,7 @@ pub struct ScreenshotDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub accent: String,
     pub sort: String,
@@ -79,6 +79,7 @@ pub struct Settings {
     pub screenshot_hotkey_enabled: bool,
     pub screenshot_hotkey: String,
     pub nebula_imported: bool,
+    pub theme: String,
 }
 
 impl Default for Settings {
@@ -98,6 +99,7 @@ impl Default for Settings {
             screenshot_hotkey_enabled: true,
             screenshot_hotkey: "F9".into(),
             nebula_imported: false,
+            theme: "aether".into(),
         }
     }
 }

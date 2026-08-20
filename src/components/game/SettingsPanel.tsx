@@ -1,4 +1,3 @@
-import { enable, disable } from "@tauri-apps/plugin-autostart";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
@@ -21,6 +20,18 @@ const MATERIALS: { id: string; label: string; hint: string }[] = [
   { id: "acrylic", label: "Acrylic", hint: "Desktop through glass" },
   { id: "mica", label: "Mica", hint: "Desktop wallpaper tint" },
   { id: "tabbed", label: "Tabbed", hint: "Win 11 sheet" },
+];
+
+const THEMES: { id: string; label: string; hint: string }[] = [
+  { id: "aether", label: "Aether", hint: "Glass aurora" },
+  { id: "skeuo", label: "Skeuomorphism", hint: "Precision instrument" },
+  { id: "flat", label: "Flat", hint: "Swiss color and line" },
+  { id: "neu", label: "Neumorphism", hint: "Soft extruded surface" },
+  { id: "material", label: "Material", hint: "Tonal elevation" },
+  { id: "clay", label: "Clay", hint: "Inflated soft 3D" },
+  { id: "prism", label: "Prism", hint: "Iridescent glass" },
+  { id: "noir", label: "Noir", hint: "Cinematic OLED" },
+  { id: "paper", label: "Paper", hint: "Editorial light" },
 ];
 
 function Toggle({
@@ -66,14 +77,6 @@ export function SettingsPanel({
       const s = await api.setSettings(p);
       onChange(s);
       setMsg(null);
-      if (p.launchOnStartup != null) {
-        try {
-          if (p.launchOnStartup) await enable();
-          else await disable();
-        } catch {
-          /* ignore */
-        }
-      }
       return s;
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
@@ -94,6 +97,35 @@ export function SettingsPanel({
 
         <section className="set-section">
           <h3>Appearance</h3>
+          <div className="set-copy" style={{ margin: "4px 0 8px" }}>
+            <strong>Theme</strong>
+            <span>Visual language for the whole launcher</span>
+          </div>
+          <div className="theme-grid">
+            {THEMES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`theme-card is-${t.id} ${(settings.theme || "aether") === t.id ? "active" : ""}`}
+                onClick={() => patch({ theme: t.id })}
+              >
+                <span className="theme-preview" aria-hidden>
+                  <span className="tp-chrome">
+                    <i /><i /><i />
+                  </span>
+                  <span className="tp-body">
+                    <i className="tp-rail" />
+                    <span className="tp-tiles">
+                      <i className="tp-tile" />
+                      <i className="tp-tile" />
+                    </span>
+                  </span>
+                </span>
+                <b>{t.label}</b>
+                <small>{t.hint}</small>
+              </button>
+            ))}
+          </div>
           <div className="set-row">
             <div className="set-copy">
               <strong>Accent</strong>
@@ -204,7 +236,7 @@ export function SettingsPanel({
           <div className="set-row">
             <div className="set-copy">
               <strong>Launch games as admin</strong>
-              <span>Use elevation when a title needs it</span>
+              <span>Games inherit Aether’s administrator rights — Play opens them with no extra prompt</span>
             </div>
             <Toggle on={settings.launchAsAdmin} onChange={(v) => patch({ launchAsAdmin: v })} />
           </div>

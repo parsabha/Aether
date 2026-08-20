@@ -54,6 +54,7 @@ export interface Settings {
   screenshotHotkeyEnabled: boolean;
   screenshotHotkey: string;
   nebulaImported: boolean;
+  theme: string;
 }
 
 export interface DisplayInfo {

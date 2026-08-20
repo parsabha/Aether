@@ -9,16 +9,10 @@ import { GameCard } from "./components/library/GameCard";
 import { VirtualGrid } from "./components/library/VirtualGrid";
 import { AutoPlayMedia } from "./components/media/AutoPlayMedia";
 import { IslandApp } from "./island/IslandApp";
+import { applyChrome } from "./lib/chrome";
 import { api } from "./lib/api";
 import type { Game, Settings } from "./lib/types";
 import { useCustomOrder } from "./lib/useCustomOrder";
-function applyChrome(s: Settings) {
-  const root = document.documentElement;
-  root.style.setProperty("--accent", s.accent);
-  root.dataset.material = s.blur || "acrylic";
-  root.classList.toggle("solid", s.blur === "solid" || s.blur === "none");
-  root.classList.toggle("reduce-motion", !!s.reduceMotion);
-}
 
 function isIslandRoute() {
   try {

@@ -10,7 +10,7 @@ use games::AppState;
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::net::TcpStream;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tauri::{
     ipc::CapabilityBuilder,
@@ -37,9 +37,65 @@ fn wait_for_ui_server(port: u16) -> bool {
     false
 }
 
+fn spawn_ui_server(app: &AppHandle, port: u16) {
+    let resolver = app.asset_resolver();
+    std::thread::spawn(move || {
+        let server = match tiny_http::Server::http(format!("127.0.0.1:{port}")) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("Aether UI server failed to bind 127.0.0.1:{port}: {e}");
+                return;
+            }
+        };
+        for req in server.incoming_requests() {
+            let raw = req.url().split(['?', '#']).next().unwrap_or("/");
+            let key = if raw.is_empty() || raw == "/" {
+                "/index.html".to_string()
+            } else if raw.starts_with('/') {
+                raw.to_string()
+            } else {
+                format!("/{raw}")
+            };
+            if let Some(asset) = resolver
+                .get(key)
+                .or_else(|| resolver.get("/index.html".into()))
+            {
+                let mut resp = tiny_http::Response::from_data(asset.bytes);
+                if let Ok(h) =
+                    tiny_http::Header::from_bytes(&b"Content-Type"[..], asset.mime_type.as_bytes())
+                {
+                    resp.add_header(h);
+                }
+                if let Ok(h) = tiny_http::Header::from_bytes(&b"Cache-Control"[..], &b"no-cache"[..]) {
+                    resp.add_header(h);
+                }
+                let _ = req.respond(resp);
+            } else {
+                let _ = req.respond(
+                    tiny_http::Response::from_string("not found").with_status_code(404),
+                );
+            }
+        }
+    });
+}
+
+async fn off_ui<T, F>(f: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
-fn get_library(state: tauri::State<'_, AppState>) -> Result<Vec<games::GameDto>, String> {
-    games::serialize_all(&state)
+async fn get_library(app: AppHandle) -> Result<Vec<games::GameDto>, String> {
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        games::serialize_all(&state)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -53,7 +109,13 @@ fn set_settings(
     state: tauri::State<'_, AppState>,
     patch: serde_json::Value,
 ) -> Result<db::Settings, String> {
+    let prev = games::get_settings(&state)?;
     let s = games::set_settings(&state, patch)?;
+    if s.launch_on_startup != prev.launch_on_startup {
+        let handle = app.clone();
+        let enabled = s.launch_on_startup;
+        std::thread::spawn(move || sync_autostart(&handle, enabled));
+    }
     // Never fail the settings write if the island window cannot be shown.
     let _ = island::show_island(&app, &state);
     if let Some(main) = app.get_webview_window("main") {
@@ -68,20 +130,24 @@ fn set_settings(
 }
 
 #[tauri::command]
-fn add_games(state: tauri::State<'_, AppState>, paths: Vec<String>) -> Result<Vec<games::GameDto>, String> {
-    let mut out = Vec::new();
-    for p in paths {
-        let lower = p.to_ascii_lowercase();
-        if !(lower.ends_with(".exe")
-            || lower.ends_with(".lnk")
-            || lower.ends_with(".bat")
-            || lower.ends_with(".cmd"))
-        {
-            continue;
+async fn add_games(app: AppHandle, paths: Vec<String>) -> Result<Vec<games::GameDto>, String> {
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        let mut out = Vec::new();
+        for p in paths {
+            let lower = p.to_ascii_lowercase();
+            if !(lower.ends_with(".exe")
+                || lower.ends_with(".lnk")
+                || lower.ends_with(".bat")
+                || lower.ends_with(".cmd"))
+            {
+                continue;
+            }
+            out.push(games::add_from_exe(&state, p)?);
         }
-        out.push(games::add_from_exe(&state, p)?);
-    }
-    Ok(out)
+        Ok(out)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -106,32 +172,44 @@ fn reorder_games(state: tauri::State<'_, AppState>, ordered_ids: Vec<String>) ->
 }
 
 #[tauri::command]
-fn launch_game(
+async fn launch_game(app: AppHandle, id: String) -> Result<games::GameDto, String> {
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        games::launch_game(&app, &state, &id)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn recent_games(app: AppHandle) -> Result<Vec<games::GameDto>, String> {
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        games::recent_games(&state, 12)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn island_games(app: AppHandle) -> Result<Vec<games::GameDto>, String> {
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        games::island_games(&state)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn set_media_path(
     app: AppHandle,
-    state: tauri::State<'_, AppState>,
-    id: String,
-) -> Result<games::GameDto, String> {
-    games::launch_game(&app, &state, &id)
-}
-
-#[tauri::command]
-fn recent_games(state: tauri::State<'_, AppState>) -> Result<Vec<games::GameDto>, String> {
-    games::recent_games(&state, 12)
-}
-
-#[tauri::command]
-fn island_games(state: tauri::State<'_, AppState>) -> Result<Vec<games::GameDto>, String> {
-    games::island_games(&state)
-}
-
-#[tauri::command]
-fn set_media_path(
-    state: tauri::State<'_, AppState>,
     id: String,
     slot: String,
     src: String,
 ) -> Result<games::GameDto, String> {
-    games::set_media_path(&state, &id, &slot, &src)
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        games::set_media_path(&state, &id, &slot, &src)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -145,13 +223,21 @@ fn remove_screenshot(
 }
 
 #[tauri::command]
-fn optimize_library(state: tauri::State<'_, AppState>) -> Result<usize, String> {
-    media::reoptimize_library(&state.db)
+async fn optimize_library(app: AppHandle) -> Result<usize, String> {
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        media::reoptimize_library(&state.db)
+    })
+    .await
 }
 
 #[tauri::command]
-fn process_media_jobs(state: tauri::State<'_, AppState>) -> Result<usize, String> {
-    media::process_pending(&state.db)
+async fn process_media_jobs(app: AppHandle) -> Result<usize, String> {
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        media::process_pending(&state.db)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -198,13 +284,21 @@ fn get_displays(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
 }
 
 #[tauri::command]
-fn ffmpeg_available() -> bool {
-    media::find_ffmpeg().is_some()
+async fn ffmpeg_available() -> bool {
+    tauri::async_runtime::spawn_blocking(media::find_ffmpeg)
+        .await
+        .ok()
+        .flatten()
+        .is_some()
 }
 
 #[tauri::command]
-fn import_nebula(state: tauri::State<'_, AppState>, force: bool) -> Result<usize, String> {
-    migrate::import_nebula(&state.db, force)
+async fn import_nebula(app: AppHandle, force: bool) -> Result<usize, String> {
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        migrate::import_nebula(&state.db, force)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -248,11 +342,6 @@ pub fn run() {
     island::UI_PORT.store(port, Ordering::Relaxed);
 
     tauri::Builder::default()
-        .plugin(
-            tauri_plugin_localhost::Builder::new(port)
-                .host("127.0.0.1")
-                .build(),
-        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -291,6 +380,8 @@ pub fn run() {
                 notifications: Mutex::new(Vec::new()),
             };
             app.manage(state);
+            island_feed::start_worker();
+            spawn_ui_server(app.handle(), port);
 
             if !wait_for_ui_server(port) {
                 eprintln!(
@@ -367,7 +458,7 @@ pub fn run() {
                     .permission("global-shortcut:allow-is-registered"),
             )?;
 
-            let main_url = format!("http://127.0.0.1:{port}/")
+            let main_url = format!("http://127.0.0.1:{port}/index.html")
                 .parse()
                 .map_err(|e: url::ParseError| e.to_string())?;
             let main = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(main_url))
@@ -389,17 +480,6 @@ pub fn run() {
                 .map(|s| s.blur)
                 .unwrap_or_else(|_| "acrylic".into());
             island::apply_main_effects(&main, &blur);
-            // DWM often needs the HWND visible before the backdrop sticks.
-            {
-                let win = main.clone();
-                let blur2 = blur.clone();
-                std::thread::spawn(move || {
-                    for ms in [80u64, 280, 700] {
-                        std::thread::sleep(std::time::Duration::from_millis(ms));
-                        island::apply_main_effects(&win, &blur2);
-                    }
-                });
-            }
 
             // Create the island window up front (hidden if disabled) so the
             // settings toggle only has to show/hide it.
@@ -410,8 +490,10 @@ pub fn run() {
             }
             island::start_clickthrough_loop(app.handle().clone());
 
-            // Resolve a working ffmpeg once (deletes broken lone copies)
-            let _ = media::find_ffmpeg();
+            // ffmpeg probe can stall on `where` / WinGet; never do it on the UI thread.
+            std::thread::spawn(|| {
+                let _ = media::find_ffmpeg();
+            });
 
             // Hotkey
             let _ = hotkey::bind_shortcuts(app.handle());
@@ -420,10 +502,9 @@ pub fn run() {
             {
                 let state = app.state::<AppState>();
                 if let Ok(s) = state.db.get_settings() {
-                    if s.launch_on_startup {
-                        use tauri_plugin_autostart::ManagerExt;
-                        let _ = app.autolaunch().enable();
-                    }
+                    let handle = app.handle().clone();
+                    let enabled = s.launch_on_startup;
+                    std::thread::spawn(move || sync_autostart(&handle, enabled));
                     let args: Vec<String> = std::env::args().collect();
                     let minimized = s.start_minimized
                         && (args.iter().any(|a| a == "--minimized" || a == "--hidden")
@@ -492,16 +573,23 @@ pub fn run() {
                                 let _ = win.hide();
                             }
                         }
-                        WindowEvent::Resized(_)
-                        | WindowEvent::ScaleFactorChanged { .. }
-                        | WindowEvent::Focused(_) => {
+                        WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
+                            static LAST_FX: AtomicU64 = AtomicU64::new(0);
+                            let now = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map(|d| d.as_millis() as u64)
+                                .unwrap_or(0);
+                            let prev = LAST_FX.load(Ordering::Relaxed);
+                            if now.saturating_sub(prev) < 250 {
+                                return;
+                            }
+                            LAST_FX.store(now, Ordering::Relaxed);
                             if let Some(win) = handle.get_webview_window("main") {
                                 let blur = handle
-                                    .state::<AppState>()
-                                    .db
-                                    .get_settings()
+                                    .try_state::<AppState>()
+                                    .and_then(|s| s.db.get_settings().ok())
                                     .map(|s| s.blur)
-                                    .unwrap_or_else(|_| "acrylic".into());
+                                    .unwrap_or_else(|| "acrylic".into());
                                 island::apply_main_effects(&win, &blur);
                             }
                         }
@@ -601,6 +689,140 @@ fn poll_running_inplace(app: &AppHandle, state: &AppState) {
             island_feed::notify_session_end(app, state, &id, &name, duration);
         }
         let _ = app.emit("library:changed", ());
+    }
+}
+
+#[cfg(windows)]
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
+}
+
+fn sync_autostart(app: &AppHandle, enabled: bool) {
+    use tauri_plugin_autostart::ManagerExt;
+    #[cfg(windows)]
+    {
+        // HKCU Run cannot start an elevated app at logon. Prefer a
+        // scheduled task with highest privileges so Aether comes up
+        // as administrator with no extra UAC prompt.
+        let _ = app.autolaunch().disable();
+        if windows_startup_task(enabled).is_err() && enabled {
+            let _ = app.autolaunch().enable();
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        if enabled {
+            let _ = app.autolaunch().enable();
+        } else {
+            let _ = app.autolaunch().disable();
+        }
+    }
+}
+
+#[cfg(windows)]
+fn write_utf16_le_bom(path: &std::path::Path, text: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    let mut f = std::fs::File::create(path)?;
+    f.write_all(&[0xFF, 0xFE])?;
+    for unit in text.encode_utf16() {
+        f.write_all(&unit.to_le_bytes())?;
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn windows_startup_task(enabled: bool) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    const TASK: &str = "Aether";
+
+    let mut cmd = std::process::Command::new("schtasks");
+    cmd.creation_flags(CREATE_NO_WINDOW)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+
+    if !enabled {
+        let _ = cmd.args(["/Delete", "/TN", TASK, "/F"]).status();
+        return Ok(());
+    }
+
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let exe_str = exe.to_string_lossy();
+    let domain = std::env::var("USERDOMAIN").unwrap_or_default();
+    let name = std::env::var("USERNAME").unwrap_or_default();
+    let user = if domain.is_empty() {
+        name
+    } else {
+        format!("{domain}\\{name}")
+    };
+    let xml = format!(
+        r#"<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>Start Aether elevated at sign-in</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+      <UserId>{user}</UserId>
+    </LogonTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>{user}</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>false</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <IdleSettings>
+      <StopOnIdleEnd>false</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>{exe}</Command>
+      <Arguments>--minimized</Arguments>
+    </Exec>
+  </Actions>
+</Task>
+"#,
+        user = xml_escape(&user),
+        exe = xml_escape(&exe_str),
+    );
+
+    let xml_path = std::env::temp_dir().join("aether-startup-task.xml");
+    write_utf16_le_bom(&xml_path, &xml).map_err(|e| e.to_string())?;
+    let xml_arg = xml_path.to_string_lossy().to_string();
+    let ok = cmd
+        .args(["/Create", "/TN", TASK, "/XML", &xml_arg, "/F"])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    let _ = std::fs::remove_file(&xml_path);
+    if ok {
+        Ok(())
+    } else {
+        Err("Failed to register startup task".into())
     }
 }
 
