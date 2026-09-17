@@ -55,6 +55,66 @@ export interface Settings {
   screenshotHotkey: string;
   nebulaImported: boolean;
   theme: string;
+  overlayEnabled: boolean;
+  overlayShowFps: boolean;
+  overlayShowCpuUsage: boolean;
+  overlayShowGpuUsage: boolean;
+  overlayShowCpuTemp: boolean;
+  overlayShowVram: boolean;
+}
+
+export interface OverlayStats {
+  fps?: number | null;
+  cpuUsage?: number | null;
+  gpuUsage?: number | null;
+  cpuTempC?: number | null;
+  vramUsedMb?: number | null;
+  vramTotalMb?: number | null;
+  gpuTempC?: number | null;
+  ramUsedMb?: number | null;
+  ramTotalMb?: number | null;
+  frameTimeMs?: number | null;
+  gpuPowerW?: number | null;
+}
+
+export interface SessionSample {
+  tMs: number;
+  fps?: number | null;
+  cpuUsage?: number | null;
+  gpuUsage?: number | null;
+  cpuTempC?: number | null;
+  vramUsedMb?: number | null;
+  vramTotalMb?: number | null;
+  gpuTempC?: number | null;
+  ramUsedMb?: number | null;
+  ramTotalMb?: number | null;
+  frameTimeMs?: number | null;
+  gpuPowerW?: number | null;
+}
+
+export interface PlaySessionSummary {
+  id: string;
+  gameId: string;
+  startedAt: number;
+  endedAt?: number | null;
+  durationMs: number;
+  avgFps?: number | null;
+  minFps?: number | null;
+  maxFps?: number | null;
+  avgCpu?: number | null;
+  avgGpu?: number | null;
+  avgCpuTemp?: number | null;
+  sampleCount: number;
+  fps1Low?: number | null;
+  avgVram?: number | null;
+  avgGpuTemp?: number | null;
+  avgRam?: number | null;
+  avgGpuPower?: number | null;
+}
+
+export interface PlaySessionDetail {
+  summary: PlaySessionSummary;
+  samples: SessionSample[];
 }
 
 export interface DisplayInfo {

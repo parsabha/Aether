@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { applyChrome } from "../lib/chrome";
-import type { Game, IslandMedia, IslandNotification } from "../lib/types";
+import type { Game, IslandMedia, IslandNotification, OverlayStats, Settings } from "../lib/types";
 
 type IslandMode = "compact" | "peek" | "expanded";
 
@@ -19,6 +19,19 @@ function fmtDuration(ms: number) {
   const m = Math.floor(s / 60);
   const r = s % 60;
   return `${m}:${r.toString().padStart(2, "0")}`;
+}
+
+function fmtMetric(n: number | null | undefined, digits = 0) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return digits > 0 ? n.toFixed(digits) : Math.round(n).toString();
+}
+
+function fmtVram(used?: number | null, total?: number | null) {
+  if (used == null || !Number.isFinite(used)) return "—";
+  const u = used >= 1024 ? `${(used / 1024).toFixed(1)}G` : `${Math.round(used)}M`;
+  if (total == null || !Number.isFinite(total) || total <= 0) return u;
+  const t = total >= 1024 ? `${(total / 1024).toFixed(0)}G` : `${Math.round(total)}M`;
+  return `${u}/${t}`;
 }
 
 function gameArt(game?: Game) {
@@ -142,17 +155,39 @@ export function IslandApp() {
   const [peekUntil, setPeekUntil] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [systemAccess, setSystemAccess] = useState(true);
+  const [overlayEnabled, setOverlayEnabled] = useState(false);
+  const [overlayFlags, setOverlayFlags] = useState({
+    fps: true,
+    cpuUsage: true,
+    gpuUsage: true,
+    cpuTemp: true,
+    vram: true,
+  });
+  const [stats, setStats] = useState<OverlayStats>({});
   const collapseTimer = useRef<number | undefined>(undefined);
   const openTimer = useRef<number | undefined>(undefined);
   const prevNotifId = useRef<string | null>(null);
   const prevTrack = useRef<string | null>(null);
+  const lastLayout = useRef({ w: 0, h: 0 });
+
+  const applyOverlaySettings = useCallback((s: Settings) => {
+    setReduceMotion(!!s.reduceMotion);
+    setOverlayEnabled(!!s.overlayEnabled);
+    setOverlayFlags({
+      fps: s.overlayShowFps !== false,
+      cpuUsage: s.overlayShowCpuUsage !== false,
+      gpuUsage: s.overlayShowGpuUsage !== false,
+      cpuTemp: s.overlayShowCpuTemp !== false,
+      vram: s.overlayShowVram !== false,
+    });
+    applyChrome(s);
+  }, []);
 
   const loadGames = useCallback(async () => {
     const [g, s] = await Promise.all([api.islandGames(), api.getSettings()]);
     setGames(g);
-    setReduceMotion(!!s.reduceMotion);
-    applyChrome(s);
-  }, []);
+    applyOverlaySettings(s);
+  }, [applyOverlaySettings]);
 
   const loadFeed = useCallback(async () => {
     try {
@@ -195,9 +230,6 @@ export function IslandApp() {
     document.body.classList.add("is-island");
     refreshGames();
     load();
-    const t = window.setInterval(load, 2500);
-    const gamesT = window.setInterval(refreshGames, 20_000);
-    const clockT = window.setInterval(() => setClock(new Date()), 30_000);
     let unLib: (() => void) | undefined;
     let unFeed: (() => void) | undefined;
     let unSet: (() => void) | undefined;
@@ -205,12 +237,13 @@ export function IslandApp() {
       unLib = u;
     });
     api.onSettingsChanged((s) => {
-      setReduceMotion(!!s.reduceMotion);
-      applyChrome(s);
+      applyOverlaySettings(s);
     }).then((u) => {
       unSet = u;
     });
     api.onIslandFeed(() => {
+      // Skip feed work while the in-game HUD is up — keeps the WebView quiet.
+      if (document.documentElement.classList.contains("is-overlay-hud")) return;
       loadFeed();
       peek();
     }).then((u) => {
@@ -219,14 +252,12 @@ export function IslandApp() {
     return () => {
       document.documentElement.classList.remove("is-island");
       document.body.classList.remove("is-island");
-      clearInterval(t);
-      clearInterval(gamesT);
-      clearInterval(clockT);
+      document.documentElement.classList.remove("is-overlay-hud");
       unLib?.();
       unFeed?.();
       unSet?.();
     };
-  }, [load, loadFeed, refreshGames, peek]);
+  }, [load, loadFeed, refreshGames, peek, applyOverlaySettings]);
 
   useEffect(() => {
     if (peekUntil <= Date.now()) return;
@@ -240,6 +271,71 @@ export function IslandApp() {
   const unread = notifications.filter((n) => !n.read);
   const latestUnread = unread[0];
   const showMedia = media && media.title && media.status !== "stopped";
+  const overlayActive = overlayEnabled && running.length > 0;
+
+  // Desktop island timers — paused entirely during in-game overlay HUD.
+  useEffect(() => {
+    if (overlayActive) {
+      document.documentElement.classList.add("is-overlay-hud");
+      return () => document.documentElement.classList.remove("is-overlay-hud");
+    }
+    document.documentElement.classList.remove("is-overlay-hud");
+    const t = window.setInterval(load, 5000);
+    const gamesT = window.setInterval(refreshGames, 30_000);
+    const clockT = window.setInterval(() => setClock(new Date()), 30_000);
+    return () => {
+      clearInterval(t);
+      clearInterval(gamesT);
+      clearInterval(clockT);
+    };
+  }, [overlayActive, load, refreshGames]);
+
+  useEffect(() => {
+    if (!overlayActive) return;
+    setExpanded(false);
+    setQuery("");
+    setPeekUntil(0);
+  }, [overlayActive]);
+
+  useEffect(() => {
+    if (!overlayActive) {
+      setStats({});
+      return;
+    }
+    let un: (() => void) | undefined;
+    api.overlayStats()
+      .then(setStats)
+      .catch(() => {});
+    api.onOverlayStats(setStats).then((u) => {
+      un = u;
+    });
+    return () => un?.();
+  }, [overlayActive]);
+
+  const overlayItems = useMemo(() => {
+    if (!overlayActive) return [];
+    const items: { key: string; label: string; value: string }[] = [];
+    if (overlayFlags.fps) {
+      items.push({ key: "fps", label: "FPS", value: fmtMetric(stats.fps) });
+    }
+    if (overlayFlags.cpuUsage) {
+      items.push({ key: "cpu", label: "CPU", value: `${fmtMetric(stats.cpuUsage)}%` });
+    }
+    if (overlayFlags.gpuUsage) {
+      items.push({ key: "gpu", label: "GPU", value: `${fmtMetric(stats.gpuUsage)}%` });
+    }
+    if (overlayFlags.cpuTemp) {
+      items.push({ key: "temp", label: "TEMP", value: `${fmtMetric(stats.cpuTempC)}°` });
+    }
+    if (overlayFlags.vram) {
+      items.push({
+        key: "vram",
+        label: "VRAM",
+        value: fmtVram(stats.vramUsedMb, stats.vramTotalMb),
+      });
+    }
+    return items;
+  }, [overlayActive, overlayFlags, stats]);
 
   useEffect(() => {
     const newest = unread[0]?.id;
@@ -283,13 +379,31 @@ export function IslandApp() {
   const strip = useMeasure<HTMLDivElement>();
   const body = useMeasure<HTMLDivElement>();
 
-  const pillW = mode === "expanded" ? 372 : Math.max(208, Math.min(400, strip.width || 208));
+  const pillW =
+    mode === "expanded"
+      ? 372
+      : overlayActive && mode === "compact"
+        ? Math.max(248, Math.min(520, strip.width || 280))
+        : Math.max(208, Math.min(400, strip.width || 208));
   const pillH =
     mode === "expanded" ? Math.max(180, body.height || 280) : Math.max(40, strip.height || 40);
 
   useEffect(() => {
-    api.islandLayout(Math.round(pillW), Math.round(pillH)).catch(() => {});
-  }, [pillW, pillH]);
+    const w = Math.round(pillW);
+    const h = Math.round(pillH);
+    // In-game HUD: ignore micro size jitter from changing FPS digits — each
+    // SetWindowPos hitchs DWM-composed Vulkan titles.
+    if (
+      overlayActive &&
+      Math.abs(w - lastLayout.current.w) < 12 &&
+      Math.abs(h - lastLayout.current.h) < 6 &&
+      lastLayout.current.w > 0
+    ) {
+      return;
+    }
+    lastLayout.current = { w, h };
+    api.islandLayout(w, h).catch(() => {});
+  }, [pillW, pillH, overlayActive]);
 
   useEffect(() => {
     if (expanded && unread.length) {
@@ -305,11 +419,13 @@ export function IslandApp() {
   }, [games, query]);
 
   const onEnter = () => {
+    if (overlayActive) return;
     if (collapseTimer.current) window.clearTimeout(collapseTimer.current);
     if (openTimer.current) window.clearTimeout(openTimer.current);
     openTimer.current = window.setTimeout(() => setExpanded(true), 70);
   };
   const onLeave = () => {
+    if (overlayActive) return;
     if (openTimer.current) window.clearTimeout(openTimer.current);
     collapseTimer.current = window.setTimeout(() => {
       setExpanded(false);
@@ -336,11 +452,13 @@ export function IslandApp() {
           mode === "peek" ? "is-peek" : "",
           running.length ? "is-live" : "",
           showMedia ? "is-media" : "",
+          overlayActive && mode === "compact" ? "is-overlay" : "",
         ]
           .filter(Boolean)
           .join(" ")}
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
+        style={overlayActive ? { pointerEvents: "none" } : undefined}
         initial={false}
         animate={{
           width: pillW,
@@ -403,6 +521,22 @@ export function IslandApp() {
                     <i /><i /><i />
                   </span>
                 )}
+              </div>
+            ) : overlayActive ? (
+              <div className="island-compact island-overlay">
+                {gameArt(nowGame) ? (
+                  <img className="island-lens" src={gameArt(nowGame)!} alt="" />
+                ) : (
+                  <span className="island-lens island-lens-empty" />
+                )}
+                <div className="island-overlay-metrics">
+                  {overlayItems.map((item) => (
+                    <span key={item.key} className="island-metric">
+                      <em>{item.label}</em>
+                      <strong>{item.value}</strong>
+                    </span>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="island-compact">

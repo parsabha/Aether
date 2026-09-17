@@ -1,10 +1,15 @@
 mod db;
+mod game_detect;
+mod game_perf;
 mod games;
 mod hotkey;
 mod island;
 mod island_feed;
 mod media;
 mod migrate;
+mod overlay_stats;
+mod session_telemetry;
+mod steam;
 
 use games::AppState;
 use parking_lot::Mutex;
@@ -104,6 +109,41 @@ fn get_settings(state: tauri::State<'_, AppState>) -> Result<db::Settings, Strin
 }
 
 #[tauri::command]
+fn list_play_sessions(
+    state: tauri::State<'_, AppState>,
+    game_id: String,
+) -> Result<Vec<db::PlaySessionSummary>, String> {
+    session_telemetry::list_sessions(&state.db, &game_id)
+}
+
+#[tauri::command]
+fn get_play_session(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+) -> Result<Option<db::PlaySessionDetail>, String> {
+    session_telemetry::get_session(&state.db, &session_id)
+}
+
+#[tauri::command]
+fn delete_play_session(
+    app: AppHandle,
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+) -> Result<bool, String> {
+    let game_id = state
+        .db
+        .get_play_session(&session_id)?
+        .map(|d| d.summary.game_id);
+    let ok = session_telemetry::delete_session(&state.db, &session_id)?;
+    if ok {
+        if let Some(gid) = game_id {
+            let _ = app.emit("sessions:changed", &gid);
+        }
+    }
+    Ok(ok)
+}
+
+#[tauri::command]
 fn set_settings(
     app: AppHandle,
     state: tauri::State<'_, AppState>,
@@ -121,9 +161,7 @@ fn set_settings(
     if let Some(main) = app.get_webview_window("main") {
         island::apply_main_effects(&main, &s.blur);
     }
-    if let Some(island_win) = app.get_webview_window("island") {
-        let _ = island_win.set_always_on_top(s.island_on_top);
-    }
+    sync_overlay(&app, &state, &s);
     let _ = hotkey::rebind_shortcuts(&app);
     let _ = app.emit("settings:changed", &s);
     Ok(s)
@@ -139,7 +177,8 @@ async fn add_games(app: AppHandle, paths: Vec<String>) -> Result<Vec<games::Game
             if !(lower.ends_with(".exe")
                 || lower.ends_with(".lnk")
                 || lower.ends_with(".bat")
-                || lower.ends_with(".cmd"))
+                || lower.ends_with(".cmd")
+                || lower.ends_with(".url"))
             {
                 continue;
             }
@@ -487,6 +526,9 @@ pub fn run() {
             {
                 let state = app.state::<AppState>();
                 let _ = island::show_island(app.handle(), &state);
+                if let Ok(s) = state.db.get_settings() {
+                    sync_overlay(app.handle(), &state, &s);
+                }
             }
             island::start_clickthrough_loop(app.handle().clone());
 
@@ -518,12 +560,16 @@ pub fn run() {
             // Background: poll running + media jobs
             let handle2 = app.handle().clone();
             std::thread::spawn(move || loop {
-                std::thread::sleep(std::time::Duration::from_secs(2));
+                let gaming = game_perf::is_gaming();
+                std::thread::sleep(std::time::Duration::from_secs(if gaming { 4 } else { 2 }));
                 let Some(state) = handle2.try_state::<AppState>() else {
                     continue;
                 };
                 poll_running_inplace(&handle2, &state);
-                let _ = media::process_pending(&state.db);
+                // Don't chew disk/CPU on media converts while a game is up.
+                if !game_perf::is_gaming() {
+                    let _ = media::process_pending(&state.db);
+                }
             });
 
             // Tray
@@ -629,59 +675,136 @@ pub fn run() {
             ffmpeg_available,
             import_nebula,
             open_folder,
-            open_data_dir
+            open_data_dir,
+            overlay_stats::overlay_stats,
+            list_play_sessions,
+            get_play_session,
+            delete_play_session
         ])
         .run(tauri::generate_context!())
         .expect("error while running Aether");
 }
 
+fn sync_overlay(app: &AppHandle, state: &AppState, settings: &db::Settings) {
+    if settings.overlay_enabled {
+        overlay_stats::ensure_started(app);
+        let pid = game_detect::sync_detected_running(state).or_else(|| {
+            state
+                .running
+                .lock()
+                .values()
+                .map(|rg| rg.pid)
+                .find(|&p| p != 0)
+        });
+        let fps_pid = game_detect::detect_presentmon_pid(state).or(pid);
+        overlay_stats::set_target_pid(fps_pid);
+        let active = pid.is_some() || fps_pid.is_some();
+        island::apply_hud_flags(active, settings.island_on_top);
+        if let Some(island_win) = app.get_webview_window("island") {
+            let on_top = active || settings.island_on_top;
+            let _ = island_win.set_always_on_top(on_top);
+            let _ = island_win.set_ignore_cursor_events(active);
+            if active {
+                // Settings/sync path: assert once. Periodic poll uses the throttled helper.
+                island::reassert_topmost_now(&island_win);
+                island::force_pass_through_hwnd(&island_win);
+                let _ = island::show_island(app, state);
+            }
+        }
+        if active {
+            let _ = app.emit("library:changed", ());
+        }
+    } else {
+        overlay_stats::stop();
+        island::apply_hud_flags(false, settings.island_on_top);
+        if let Some(island_win) = app.get_webview_window("island") {
+            let _ = island_win.set_always_on_top(settings.island_on_top);
+            let _ = island_win.set_ignore_cursor_events(false);
+        }
+    }
+}
+
 fn poll_running_inplace(app: &AppHandle, state: &AppState) {
     let mut finished = Vec::new();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+
+    // Mark dead PIDs as waiting (pid=0) inside the handoff window so Steam
+    // relaunches keep the same play session instead of ending it.
     {
         let mut running = state.running.lock();
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis() as i64)
-            .unwrap_or(0);
+        for rg in running.values_mut() {
+            if rg.pid != 0 && !process_alive(rg.pid) {
+                rg.pid = 0;
+            }
+        }
         running.retain(|id, rg| {
             if rg.pid == 0 {
-                if now - rg.started_at > 120_000 {
-                    finished.push((id.clone(), rg.started_at));
+                if now > rg.wait_until {
+                    finished.push((id.clone(), rg.started_at, rg.session_id.clone()));
                     return false;
                 }
                 return true;
             }
-            #[cfg(windows)]
-            {
-                use windows::Win32::Foundation::CloseHandle;
-                use windows::Win32::System::Threading::{
-                    OpenProcess, WaitForSingleObject, PROCESS_QUERY_LIMITED_INFORMATION,
-                    PROCESS_SYNCHRONIZE,
-                };
-                unsafe {
-                    if let Ok(h) = OpenProcess(
-                        PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
-                        false,
-                        rg.pid,
-                    ) {
-                        let wait = WaitForSingleObject(h, 0);
-                        let _ = CloseHandle(h);
-                        if wait.0 == 258u32 {
-                            return true;
-                        }
+            true
+        });
+    }
+
+    if let Ok(settings) = state.db.get_settings() {
+        let has_running = !state.running.lock().is_empty();
+        // Always sample while a session is active (for session charts), even if HUD is off.
+        if has_running || settings.overlay_enabled {
+            overlay_stats::ensure_started(app);
+            let prev_pid = overlay_stats::target_pid();
+            // Single detection path — avoid a second EnumProcesses for PresentMon.
+            // Also rebinds Steam handoffs: pid=0 → real game process.
+            let pid = game_detect::sync_detected_running(state);
+            overlay_stats::set_target_pid(pid);
+            let active = pid.is_some() || has_running;
+            game_perf::set_gaming(active);
+            // Hide the main library window while gaming — WebView2/acrylic
+            // compositing steals GPU time even when the game is focused.
+            if let Some(main) = app.get_webview_window("main") {
+                if active {
+                    if main.is_visible().unwrap_or(false) {
+                        let _ = main.hide();
                     }
                 }
             }
-            finished.push((id.clone(), rg.started_at));
-            false
-        });
+            if settings.overlay_enabled {
+                island::apply_hud_flags(active, settings.island_on_top);
+                if let Some(win) = app.get_webview_window("island") {
+                    let on_top = active || settings.island_on_top;
+                    let _ = win.set_always_on_top(on_top);
+                    let _ = win.set_ignore_cursor_events(active);
+                    if active {
+                        // Only reassert when the target process changes — never every poll.
+                        if prev_pid != pid.unwrap_or(0) {
+                            island::reassert_topmost_now(&win);
+                            island::force_pass_through_hwnd(&win);
+                        }
+                    }
+                }
+                if prev_pid != pid.unwrap_or(0) {
+                    let _ = app.emit("library:changed", ());
+                }
+            } else {
+                island::apply_hud_flags(false, settings.island_on_top);
+            }
+        } else {
+            overlay_stats::set_target_pid(None);
+            game_perf::set_gaming(false);
+        }
     }
-    for (id, started) in finished {
+    for (id, started, session_id) in finished {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
         let duration = (now - started).max(0);
+        let _ = session_telemetry::end_session(&state.db, &session_id, now);
         if let Ok(Some(mut g)) = state.db.get_game(&id) {
             g.playtime_ms += duration;
             let name = g.name.clone();
@@ -689,7 +812,36 @@ fn poll_running_inplace(app: &AppHandle, state: &AppState) {
             island_feed::notify_session_end(app, state, &id, &name, duration);
         }
         let _ = app.emit("library:changed", ());
+        let _ = app.emit("sessions:changed", &id);
     }
+}
+
+#[cfg(windows)]
+fn process_alive(pid: u32) -> bool {
+    if pid == 0 {
+        return false;
+    }
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{
+        OpenProcess, WaitForSingleObject, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+    };
+    unsafe {
+        let Ok(h) = OpenProcess(
+            PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+            false,
+            pid,
+        ) else {
+            return false;
+        };
+        let wait = WaitForSingleObject(h, 0);
+        let _ = CloseHandle(h);
+        wait.0 == 258u32 // WAIT_TIMEOUT => still running
+    }
+}
+
+#[cfg(not(windows))]
+fn process_alive(pid: u32) -> bool {
+    pid != 0
 }
 
 #[cfg(windows)]

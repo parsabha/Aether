@@ -1,6 +1,6 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { DisplayInfo, Game, IslandFeed, Settings } from "./types";
+import type { DisplayInfo, Game, IslandFeed, OverlayStats, PlaySessionDetail, PlaySessionSummary, Settings } from "./types";
 
 function mediaSrc(path?: string | null): string | null {
   if (!path) return null;
@@ -79,4 +79,15 @@ export const api = {
     listen("screenshot:captured", (e) => cb(e.payload as { gameId: string; path: string })),
   onIslandFeed: (cb: () => void): Promise<UnlistenFn> =>
     listen("island:feed", () => cb()),
+  overlayStats: () => invoke<OverlayStats>("overlay_stats"),
+  onOverlayStats: (cb: (s: OverlayStats) => void): Promise<UnlistenFn> =>
+    listen<OverlayStats>("overlay:stats", (e) => cb(e.payload)),
+  listPlaySessions: (gameId: string) =>
+    invoke<PlaySessionSummary[]>("list_play_sessions", { gameId }),
+  getPlaySession: (sessionId: string) =>
+    invoke<PlaySessionDetail | null>("get_play_session", { sessionId }),
+  deletePlaySession: (sessionId: string) =>
+    invoke<boolean>("delete_play_session", { sessionId }),
+  onSessionsChanged: (cb: (gameId: string) => void): Promise<UnlistenFn> =>
+    listen<string>("sessions:changed", (e) => cb(e.payload)),
 };

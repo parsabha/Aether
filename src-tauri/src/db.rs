@@ -80,6 +80,13 @@ pub struct Settings {
     pub screenshot_hotkey: String,
     pub nebula_imported: bool,
     pub theme: String,
+    /// When a library game is running, widen the island into a live metrics strip.
+    pub overlay_enabled: bool,
+    pub overlay_show_fps: bool,
+    pub overlay_show_cpu_usage: bool,
+    pub overlay_show_gpu_usage: bool,
+    pub overlay_show_cpu_temp: bool,
+    pub overlay_show_vram: bool,
 }
 
 impl Default for Settings {
@@ -100,6 +107,12 @@ impl Default for Settings {
             screenshot_hotkey: "F9".into(),
             nebula_imported: false,
             theme: "aether".into(),
+            overlay_enabled: false,
+            overlay_show_fps: true,
+            overlay_show_cpu_usage: true,
+            overlay_show_gpu_usage: true,
+            overlay_show_cpu_temp: true,
+            overlay_show_vram: true,
         }
     }
 }
@@ -180,9 +193,64 @@ impl Db {
             CREATE INDEX IF NOT EXISTS idx_games_name ON games(name);
             CREATE INDEX IF NOT EXISTS idx_games_last_played ON games(last_played);
             CREATE INDEX IF NOT EXISTS idx_screenshots_game ON screenshots(game_id);
+            CREATE TABLE IF NOT EXISTS play_sessions (
+              id TEXT PRIMARY KEY,
+              game_id TEXT NOT NULL,
+              started_at INTEGER NOT NULL,
+              ended_at INTEGER,
+              duration_ms INTEGER NOT NULL DEFAULT 0,
+              avg_fps REAL,
+              min_fps REAL,
+              max_fps REAL,
+              avg_cpu REAL,
+              avg_gpu REAL,
+              avg_cpu_temp REAL,
+              sample_count INTEGER NOT NULL DEFAULT 0,
+              fps_1_low REAL,
+              avg_vram REAL,
+              avg_gpu_temp REAL,
+              avg_ram REAL,
+              avg_gpu_power REAL,
+              FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE
+            );
+            CREATE TABLE IF NOT EXISTS session_samples (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              session_id TEXT NOT NULL,
+              t_ms INTEGER NOT NULL,
+              fps REAL,
+              cpu_usage REAL,
+              gpu_usage REAL,
+              cpu_temp_c REAL,
+              vram_used_mb REAL,
+              vram_total_mb REAL,
+              gpu_temp_c REAL,
+              ram_used_mb REAL,
+              ram_total_mb REAL,
+              frame_time_ms REAL,
+              gpu_power_w REAL,
+              FOREIGN KEY(session_id) REFERENCES play_sessions(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_sessions_game ON play_sessions(game_id, started_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_samples_session ON session_samples(session_id, t_ms);
             "#,
         )
         .map_err(|e| e.to_string())?;
+
+        // Additive columns for richer session telemetry (safe on existing DBs).
+        for sql in [
+            "ALTER TABLE session_samples ADD COLUMN gpu_temp_c REAL",
+            "ALTER TABLE session_samples ADD COLUMN ram_used_mb REAL",
+            "ALTER TABLE session_samples ADD COLUMN ram_total_mb REAL",
+            "ALTER TABLE session_samples ADD COLUMN frame_time_ms REAL",
+            "ALTER TABLE session_samples ADD COLUMN gpu_power_w REAL",
+            "ALTER TABLE play_sessions ADD COLUMN fps_1_low REAL",
+            "ALTER TABLE play_sessions ADD COLUMN avg_vram REAL",
+            "ALTER TABLE play_sessions ADD COLUMN avg_gpu_temp REAL",
+            "ALTER TABLE play_sessions ADD COLUMN avg_ram REAL",
+            "ALTER TABLE play_sessions ADD COLUMN avg_gpu_power REAL",
+        ] {
+            let _ = conn.execute(sql, []);
+        }
 
         let defaults = serde_json::to_string(&Settings::default()).map_err(|e| e.to_string())?;
         conn.execute(
@@ -435,4 +503,333 @@ impl Db {
         .map_err(|e| e.to_string())?;
         Ok(())
     }
+
+    pub fn insert_play_session(&self, id: &str, game_id: &str, started_at: i64) -> Result<(), String> {
+        let conn = self.conn.lock();
+        conn.execute(
+            "INSERT INTO play_sessions (id, game_id, started_at) VALUES (?1, ?2, ?3)",
+            params![id, game_id, started_at],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn insert_session_samples(&self, session_id: &str, samples: &[SessionSample]) -> Result<(), String> {
+        if samples.is_empty() {
+            return Ok(());
+        }
+        let conn = self.conn.lock();
+        let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+        {
+            let mut stmt = tx
+                .prepare(
+                    "INSERT INTO session_samples (
+                       session_id, t_ms, fps, cpu_usage, gpu_usage, cpu_temp_c,
+                       vram_used_mb, vram_total_mb, gpu_temp_c, ram_used_mb, ram_total_mb,
+                       frame_time_ms, gpu_power_w
+                     ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
+                )
+                .map_err(|e| e.to_string())?;
+            for s in samples {
+                stmt.execute(params![
+                    session_id,
+                    s.t_ms,
+                    s.fps,
+                    s.cpu_usage,
+                    s.gpu_usage,
+                    s.cpu_temp_c,
+                    s.vram_used_mb,
+                    s.vram_total_mb,
+                    s.gpu_temp_c,
+                    s.ram_used_mb,
+                    s.ram_total_mb,
+                    s.frame_time_ms,
+                    s.gpu_power_w,
+                ])
+                .map_err(|e| e.to_string())?;
+            }
+        }
+        tx.commit().map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn finalize_play_session(&self, session_id: &str, ended_at: i64) -> Result<(), String> {
+        let conn = self.conn.lock();
+        let started_at: i64 = conn
+            .query_row(
+                "SELECT started_at FROM play_sessions WHERE id = ?1",
+                params![session_id],
+                |r| r.get(0),
+            )
+            .map_err(|e| e.to_string())?;
+        let duration_ms = (ended_at - started_at).max(0);
+
+        let fps_vals: Vec<f64> = {
+            let mut stmt = conn
+                .prepare("SELECT fps FROM session_samples WHERE session_id = ?1 AND fps IS NOT NULL ORDER BY fps ASC")
+                .map_err(|e| e.to_string())?;
+            let rows = stmt
+                .query_map(params![session_id], |r| r.get::<_, f64>(0))
+                .map_err(|e| e.to_string())?;
+            let mut v = Vec::new();
+            for r in rows {
+                if let Ok(x) = r {
+                    v.push(x);
+                }
+            }
+            v
+        };
+        let fps_1_low = if fps_vals.is_empty() {
+            None
+        } else {
+            let idx = ((fps_vals.len() as f64) * 0.01).floor() as usize;
+            Some(fps_vals[idx.min(fps_vals.len() - 1)])
+        };
+
+        let (avg_fps, min_fps, max_fps, avg_cpu, avg_gpu, avg_temp, avg_vram, avg_gpu_temp, avg_ram, avg_power, count): (
+            Option<f64>,
+            Option<f64>,
+            Option<f64>,
+            Option<f64>,
+            Option<f64>,
+            Option<f64>,
+            Option<f64>,
+            Option<f64>,
+            Option<f64>,
+            Option<f64>,
+            i64,
+        ) = conn
+            .query_row(
+                "SELECT
+                   AVG(fps), MIN(fps), MAX(fps),
+                   AVG(cpu_usage), AVG(gpu_usage), AVG(cpu_temp_c),
+                   AVG(vram_used_mb), AVG(gpu_temp_c), AVG(ram_used_mb), AVG(gpu_power_w),
+                   COUNT(*)
+                 FROM session_samples WHERE session_id = ?1",
+                params![session_id],
+                |r| {
+                    Ok((
+                        r.get(0)?,
+                        r.get(1)?,
+                        r.get(2)?,
+                        r.get(3)?,
+                        r.get(4)?,
+                        r.get(5)?,
+                        r.get(6)?,
+                        r.get(7)?,
+                        r.get(8)?,
+                        r.get(9)?,
+                        r.get(10)?,
+                    ))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE play_sessions SET
+               ended_at = ?1,
+               duration_ms = ?2,
+               avg_fps = ?3,
+               min_fps = ?4,
+               max_fps = ?5,
+               avg_cpu = ?6,
+               avg_gpu = ?7,
+               avg_cpu_temp = ?8,
+               sample_count = ?9,
+               fps_1_low = ?10,
+               avg_vram = ?11,
+               avg_gpu_temp = ?12,
+               avg_ram = ?13,
+               avg_gpu_power = ?14
+             WHERE id = ?15",
+            params![
+                ended_at,
+                duration_ms,
+                avg_fps,
+                min_fps,
+                max_fps,
+                avg_cpu,
+                avg_gpu,
+                avg_temp,
+                count,
+                fps_1_low,
+                avg_vram,
+                avg_gpu_temp,
+                avg_ram,
+                avg_power,
+                session_id,
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn list_play_sessions(&self, game_id: &str) -> Result<Vec<PlaySessionSummary>, String> {
+        let conn = self.conn.lock();
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, game_id, started_at, ended_at, duration_ms,
+                        avg_fps, min_fps, max_fps, avg_cpu, avg_gpu, avg_cpu_temp, sample_count,
+                        fps_1_low, avg_vram, avg_gpu_temp, avg_ram, avg_gpu_power
+                 FROM play_sessions
+                 WHERE game_id = ?1
+                 ORDER BY started_at DESC
+                 LIMIT 100",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(params![game_id], |r| {
+                Ok(PlaySessionSummary {
+                    id: r.get(0)?,
+                    game_id: r.get(1)?,
+                    started_at: r.get(2)?,
+                    ended_at: r.get(3)?,
+                    duration_ms: r.get(4)?,
+                    avg_fps: r.get(5)?,
+                    min_fps: r.get(6)?,
+                    max_fps: r.get(7)?,
+                    avg_cpu: r.get(8)?,
+                    avg_gpu: r.get(9)?,
+                    avg_cpu_temp: r.get(10)?,
+                    sample_count: r.get(11)?,
+                    fps_1_low: r.get(12)?,
+                    avg_vram: r.get(13)?,
+                    avg_gpu_temp: r.get(14)?,
+                    avg_ram: r.get(15)?,
+                    avg_gpu_power: r.get(16)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        let mut out = Vec::new();
+        for r in rows {
+            out.push(r.map_err(|e| e.to_string())?);
+        }
+        Ok(out)
+    }
+
+    pub fn get_play_session(&self, session_id: &str) -> Result<Option<PlaySessionDetail>, String> {
+        let summary = {
+            let conn = self.conn.lock();
+            conn.query_row(
+                "SELECT id, game_id, started_at, ended_at, duration_ms,
+                        avg_fps, min_fps, max_fps, avg_cpu, avg_gpu, avg_cpu_temp, sample_count,
+                        fps_1_low, avg_vram, avg_gpu_temp, avg_ram, avg_gpu_power
+                 FROM play_sessions WHERE id = ?1",
+                params![session_id],
+                |r| {
+                    Ok(PlaySessionSummary {
+                        id: r.get(0)?,
+                        game_id: r.get(1)?,
+                        started_at: r.get(2)?,
+                        ended_at: r.get(3)?,
+                        duration_ms: r.get(4)?,
+                        avg_fps: r.get(5)?,
+                        min_fps: r.get(6)?,
+                        max_fps: r.get(7)?,
+                        avg_cpu: r.get(8)?,
+                        avg_gpu: r.get(9)?,
+                        avg_cpu_temp: r.get(10)?,
+                        sample_count: r.get(11)?,
+                        fps_1_low: r.get(12)?,
+                        avg_vram: r.get(13)?,
+                        avg_gpu_temp: r.get(14)?,
+                        avg_ram: r.get(15)?,
+                        avg_gpu_power: r.get(16)?,
+                    })
+                },
+            )
+            .optional()
+            .map_err(|e| e.to_string())?
+        };
+        let Some(summary) = summary else {
+            return Ok(None);
+        };
+        let samples = {
+            let conn = self.conn.lock();
+            let mut stmt = conn
+                .prepare(
+                    "SELECT t_ms, fps, cpu_usage, gpu_usage, cpu_temp_c, vram_used_mb, vram_total_mb,
+                            gpu_temp_c, ram_used_mb, ram_total_mb, frame_time_ms, gpu_power_w
+                     FROM session_samples WHERE session_id = ?1 ORDER BY t_ms ASC",
+                )
+                .map_err(|e| e.to_string())?;
+            let rows = stmt
+                .query_map(params![session_id], |r| {
+                    Ok(SessionSample {
+                        t_ms: r.get(0)?,
+                        fps: r.get(1)?,
+                        cpu_usage: r.get(2)?,
+                        gpu_usage: r.get(3)?,
+                        cpu_temp_c: r.get(4)?,
+                        vram_used_mb: r.get(5)?,
+                        vram_total_mb: r.get(6)?,
+                        gpu_temp_c: r.get(7)?,
+                        ram_used_mb: r.get(8)?,
+                        ram_total_mb: r.get(9)?,
+                        frame_time_ms: r.get(10)?,
+                        gpu_power_w: r.get(11)?,
+                    })
+                })
+                .map_err(|e| e.to_string())?;
+            let mut out = Vec::new();
+            for r in rows {
+                out.push(r.map_err(|e| e.to_string())?);
+            }
+            out
+        };
+        Ok(Some(PlaySessionDetail { summary, samples }))
+    }
+
+    pub fn delete_play_session(&self, session_id: &str) -> Result<bool, String> {
+        let conn = self.conn.lock();
+        let n = conn
+            .execute("DELETE FROM play_sessions WHERE id = ?1", params![session_id])
+            .map_err(|e| e.to_string())?;
+        Ok(n > 0)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionSample {
+    pub t_ms: i64,
+    pub fps: Option<f32>,
+    pub cpu_usage: Option<f32>,
+    pub gpu_usage: Option<f32>,
+    pub cpu_temp_c: Option<f32>,
+    pub vram_used_mb: Option<f32>,
+    pub vram_total_mb: Option<f32>,
+    pub gpu_temp_c: Option<f32>,
+    pub ram_used_mb: Option<f32>,
+    pub ram_total_mb: Option<f32>,
+    pub frame_time_ms: Option<f32>,
+    pub gpu_power_w: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaySessionSummary {
+    pub id: String,
+    pub game_id: String,
+    pub started_at: i64,
+    pub ended_at: Option<i64>,
+    pub duration_ms: i64,
+    pub avg_fps: Option<f64>,
+    pub min_fps: Option<f64>,
+    pub max_fps: Option<f64>,
+    pub avg_cpu: Option<f64>,
+    pub avg_gpu: Option<f64>,
+    pub avg_cpu_temp: Option<f64>,
+    pub sample_count: i64,
+    pub fps_1_low: Option<f64>,
+    pub avg_vram: Option<f64>,
+    pub avg_gpu_temp: Option<f64>,
+    pub avg_ram: Option<f64>,
+    pub avg_gpu_power: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaySessionDetail {
+    pub summary: PlaySessionSummary,
+    pub samples: Vec<SessionSample>,
 }

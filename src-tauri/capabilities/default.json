@@ -68,6 +68,10 @@
     "allow-ffmpeg-available",
     "allow-import-nebula",
     "allow-open-folder",
-    "allow-open-data-dir"
+    "allow-open-data-dir",
+    "allow-overlay-stats",
+    "allow-list-play-sessions",
+    "allow-get-play-session",
+    "allow-delete-play-session"
   ]
 }

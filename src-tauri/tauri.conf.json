@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Aether",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "identifier": "com.parsa.aether",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -36,7 +36,8 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "installer/support.html": "support.html"
+      "installer/support.html": "support.html",
+      "resources/PresentMon.exe": "PresentMon.exe"
     },
     "windows": {
       "digestAlgorithm": "sha256",

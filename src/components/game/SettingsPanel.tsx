@@ -215,6 +215,73 @@ export function SettingsPanel({
               ))}
             </select>
           </div>
+          <div className="set-row">
+            <div className="set-copy">
+              <strong>In-game overlay</strong>
+              <span>
+                While a library game is running (launched from Aether or elsewhere), pin the island
+                above the game as a click-through stats HUD. Works with normal fullscreen.
+              </span>
+            </div>
+            <Toggle
+              on={!!settings.overlayEnabled}
+              onChange={(v) => patch({ overlayEnabled: v })}
+            />
+          </div>
+          {settings.overlayEnabled && (
+            <>
+              <div className="set-row set-row-nested">
+                <div className="set-copy">
+                  <strong>FPS</strong>
+                  <span>Frames per second for the running game</span>
+                </div>
+                <Toggle
+                  on={settings.overlayShowFps !== false}
+                  onChange={(v) => patch({ overlayShowFps: v })}
+                />
+              </div>
+              <div className="set-row set-row-nested">
+                <div className="set-copy">
+                  <strong>CPU usage</strong>
+                  <span>System-wide processor load</span>
+                </div>
+                <Toggle
+                  on={settings.overlayShowCpuUsage !== false}
+                  onChange={(v) => patch({ overlayShowCpuUsage: v })}
+                />
+              </div>
+              <div className="set-row set-row-nested">
+                <div className="set-copy">
+                  <strong>GPU usage</strong>
+                  <span>Graphics engine utilization</span>
+                </div>
+                <Toggle
+                  on={settings.overlayShowGpuUsage !== false}
+                  onChange={(v) => patch({ overlayShowGpuUsage: v })}
+                />
+              </div>
+              <div className="set-row set-row-nested">
+                <div className="set-copy">
+                  <strong>CPU temperature</strong>
+                  <span>Package / thermal zone when Windows exposes it</span>
+                </div>
+                <Toggle
+                  on={settings.overlayShowCpuTemp !== false}
+                  onChange={(v) => patch({ overlayShowCpuTemp: v })}
+                />
+              </div>
+              <div className="set-row set-row-nested">
+                <div className="set-copy">
+                  <strong>VRAM usage</strong>
+                  <span>Dedicated video memory used / total</span>
+                </div>
+                <Toggle
+                  on={settings.overlayShowVram !== false}
+                  onChange={(v) => patch({ overlayShowVram: v })}
+                />
+              </div>
+            </>
+          )}
         </section>
 
         <section className="set-section">

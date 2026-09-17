@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-list-play-sessions"
+description = "Enables the list_play_sessions command without any pre-configured scope."
+commands.allow = ["list_play_sessions"]
+
+[[permission]]
+identifier = "deny-list-play-sessions"
+description = "Denies the list_play_sessions command without any pre-configured scope."
+commands.deny = ["list_play_sessions"]

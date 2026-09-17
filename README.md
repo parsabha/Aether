@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/parsabahemmat/Aether/releases/latest"><strong>Download for Windows</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/parsabahemmat/Aether/releases/tag/v1.1.0">v1.1.0</a>
+  <a href="https://github.com/parsabahemmat/Aether/releases/tag/v1.2.0">v1.2.0</a>
 </p>
 
 <p align="center">
@@ -25,17 +25,35 @@ Aether keeps your PC games in a local library with animated covers, playtime, an
 
 Windows 10 and 11. Installs for the current user. The app runs elevated so Play can open games as administrator without a second UAC prompt when that option is on.
 
-## What’s new in 1.1
+## What’s new in 1.2
 
-- **Game page redesign** — brighter banner hero, artwork gallery (cover / banner / icon), screenshot grid, and game settings tucked behind Edit instead of crowding the page
-- **Design themes** — Aether, Skeuomorphism, Flat, Neumorphism, Material, Clay, Prism, Noir, and Paper in Settings
-- **Smoother launches** — library and media work moved off the UI thread; island feed and media session updates are more reliable
-- **Admin play** — optional “launch games as admin” inherits Aether’s elevation so titles that need it start cleanly
-- **Startup** — when elevation is required, Aether prefers a scheduled task so it can come back as admin after sign-in
+- **Steam games** — titles under `steamapps` (or Steam `.url` shortcuts) launch through Steam (`steam://rungameid/…`) so DRM handoffs no longer flash-and-quit; playtime, overlay, and session tracking stay attached to the real game process
+- **In-game overlay** — optional live FPS / CPU / GPU / temp / VRAM strip on the island while a library game is running (PresentMon-backed FPS)
+- **Session results** — each play session records charts and summary stats (avg/min/max FPS, CPU/GPU, temps, VRAM, 1% lows) on the game page
+- **Smarter process detection** — follows launcher stubs (Steam, Rockstar, Epic, and similar) to the process that actually presents frames
+
+## Steam games
+
+Add a Steam title the same way as any other game:
+
+1. Browse to the game’s folder under `…\steamapps\common\…` and pick the main `.exe`, **or**
+2. Add a Steam internet shortcut (`.url`) that points at `steam://rungameid/<id>`
+
+Aether detects the AppID from `steam_appid.txt` or the nearby `appmanifest_*.acf`, tags the entry as **Steam**, and prefers the Steam display name when available.
+
+**Play** opens the game through the Steam client. Keep Steam installed and signed in. Direct `.exe` spawns often exit immediately so Steam can relaunch the real process — Aether waits for that handoff and continues the same play session (overlay + playtime) instead of ending early.
+
+> Tip: If a Steam game shows as missing, re-pick the `.exe` from its install folder. URI-only (`.url`) entries still launch, but folder reveal is hidden because there is no local path.
+
+## Overlay & play sessions
+
+In **Settings**, turn on the in-game overlay and choose which metrics to show. While a library game is running, the island widens into a live HUD (click-through so it does not steal input).
+
+After you quit, open the game page for a **session teaser** and full results with performance charts. Sessions and playtime stay on your PC in `%APPDATA%\Aether`.
 
 ## Library
 
-Add games by dropping `.exe`, `.lnk`, `.bat`, or `.cmd` files onto the window, or pick them from disk. Each entry can have a cover, banner, icon, tags, category, and notes.
+Add games by dropping `.exe`, `.lnk`, `.bat`, `.cmd`, or Steam `.url` files onto the window, or pick them from disk. Each entry can have a cover, banner, icon, tags, category, and notes.
 
 Covers accept still images, GIFs, and video. With [ffmpeg](https://ffmpeg.org/) on `PATH` (or `ffmpeg.exe` in `%APPDATA%\Aether\bin\`), GIF and video artwork is converted to VP9 WebM and plays while the tile is visible.
 
@@ -43,21 +61,21 @@ Playtime and launch count are stored on your machine. Search, favorites, and a c
 
 ## Game page
 
-Open a title for a cinematic banner, cover, play controls, about text, artwork section, and screenshots. Press the gear or **Edit game** to change name, media, accent, launch args, and the executable. A configurable hotkey (default F9) captures into that game’s screenshot gallery.
+Open a title for a cinematic banner, cover, play controls, about text, artwork section, screenshots, and recent session results. Press the gear or **Edit game** to change name, media, accent, launch args, and the executable. A configurable hotkey (default F9) captures into that game’s screenshot gallery.
 
 ## Island
 
 A pill sits at the top center of the display. Hover to expand it: running and recent games, now-playing controls from Windows media sessions, and a short notification list. Clicks outside the island pass through to the desktop.
 
-The island can stay above other windows and can be assigned to a specific monitor.
+When overlay is enabled and a game is running, the island becomes the in-game metrics strip. It can stay above other windows and can be assigned to a specific monitor.
 
 ## Appearance
 
-Pick a visual theme and window material (Acrylic, Mica, Tabbed, or solid). Accent color, reduced motion, launch on sign-in, start minimized, and “run games as administrator” live in Settings.
+Pick a visual theme and window material (Acrylic, Mica, Tabbed, or solid). Accent color, reduced motion, launch on sign-in, start minimized, “run games as administrator,” and overlay toggles live in Settings.
 
 ## Install
 
-1. Download [**Aether-Setup-1.1.0.exe**](https://github.com/parsabahemmat/Aether/releases/latest)
+1. Download [**Aether-Setup-1.2.0.exe**](https://github.com/parsabahemmat/Aether/releases/latest)
 2. Run the installer (Windows may ask for administrator once)
 3. Open **Aether** from the Start menu
 

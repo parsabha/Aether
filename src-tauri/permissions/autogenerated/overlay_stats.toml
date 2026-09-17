@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-overlay-stats"
+description = "Enables the overlay_stats command without any pre-configured scope."
+commands.allow = ["overlay_stats"]
+
+[[permission]]
+identifier = "deny-overlay-stats"
+description = "Denies the overlay_stats command without any pre-configured scope."
+commands.deny = ["overlay_stats"]

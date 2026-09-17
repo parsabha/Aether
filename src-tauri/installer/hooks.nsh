@@ -38,9 +38,14 @@
     StrCpy $1 "$INSTDIR\${MAINBINARYNAME}.exe"
   CreateShortCut "$0\Support Aether.lnk" "$INSTDIR\support.html" "" "$1" 0
   CreateShortCut "$0\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "" "$1" 0
-  IfFileExists "$DESKTOP\${PRODUCTNAME}.lnk" 0 skip_desktop_icon
-    CreateShortCut "$DESKTOP\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "" "$1" 0
-  skip_desktop_icon:
+  ; Always restore the desktop shortcut. Tauri only creates it from the
+  ; finish-page checkbox (skipped when silent) or CreateOrUpdateDesktopShortcut,
+  ; which no-ops in /UPDATE mode. Windows also deletes .lnk files whose target
+  ; is missing, so a failed in-place replace of aether.exe can wipe the icon.
+  CreateShortCut "$DESKTOP\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "" "$1" 0
+  IfFileExists "$DESKTOP\Apps\${PRODUCTNAME}.lnk" 0 skip_apps_icon
+    CreateShortCut "$DESKTOP\Apps\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "" "$1" 0
+  skip_apps_icon:
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
@@ -49,6 +54,9 @@
     StrCpy $0 "$SMPROGRAMS\${STARTMENUFOLDER}"
   !endif
   Delete "$0\Support Aether.lnk"
+  ${If} $UpdateMode <> 1
+    Delete "$DESKTOP\Apps\${PRODUCTNAME}.lnk"
+  ${EndIf}
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL

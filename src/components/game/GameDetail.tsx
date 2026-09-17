@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { api } from "../../lib/api";
 import type { Game, MediaKind } from "../../lib/types";
 import { AutoPlayMedia } from "../media/AutoPlayMedia";
+import { SessionTeaser } from "./SessionTeaser";
 
 const ACCENT_SWATCHES = [
   "#0078f2",
@@ -101,12 +102,14 @@ export function GameDetail({
   onBack,
   onChange,
   onLaunch,
+  onOpenSessions,
   reduceMotion,
 }: {
   game: Game;
   onBack: () => void;
   onChange: (g: Game) => void;
   onLaunch: () => void;
+  onOpenSessions: () => void;
   reduceMotion?: boolean;
 }) {
   const [lightbox, setLightbox] = useState<string | null>(null);
@@ -164,7 +167,7 @@ export function GameDetail({
   const pickExe = async () => {
     const selected = await open({
       multiple: false,
-      filters: [{ name: "Games", extensions: ["exe", "lnk", "bat", "cmd"] }],
+      filters: [{ name: "Games", extensions: ["exe", "lnk", "bat", "cmd", "url"] }],
     });
     if (!selected || Array.isArray(selected)) return;
     const cwd = selected.replace(/[\\/][^\\/]+$/, "");
@@ -327,7 +330,7 @@ export function GameDetail({
                 >
                   {game.favorite ? "★ Favorited" : "☆ Favorite"}
                 </button>
-                {game.exePath && (
+                {game.exePath && !game.exePath.toLowerCase().startsWith("steam://") && (
                   <button type="button" className="btn detail-ghost-btn" onClick={() => api.openFolder(game.exePath!)}>
                     Show in folder
                   </button>
@@ -439,6 +442,8 @@ export function GameDetail({
               </div>
             )}
           </section>
+
+          <SessionTeaser gameId={game.id} onOpenResults={onOpenSessions} />
         </div>
 
         <aside className="detail-side">
@@ -479,7 +484,7 @@ export function GameDetail({
                 <span>Settings</span>
                 <small>Name, media, accent</small>
               </button>
-              {game.exePath && (
+              {game.exePath && !game.exePath.toLowerCase().startsWith("steam://") && (
                 <button type="button" className="quick-btn" onClick={() => api.openFolder(game.exePath!)}>
                   <span>Open folder</span>
                   <small>Reveal executable</small>

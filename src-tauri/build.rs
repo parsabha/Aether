@@ -30,6 +30,10 @@ fn main() {
             "import_nebula",
             "open_folder",
             "open_data_dir",
+            "overlay_stats",
+            "list_play_sessions",
+            "get_play_session",
+            "delete_play_session",
         ]),
     );
 

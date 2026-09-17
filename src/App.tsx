@@ -4,6 +4,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sidebar, TitleBar } from "./components/chrome";
 import { GameDetail } from "./components/game/GameDetail";
+import { SessionResultsPage } from "./components/game/SessionResultsPage";
 import { SettingsPanel } from "./components/game/SettingsPanel";
 import { GameCard } from "./components/library/GameCard";
 import { VirtualGrid } from "./components/library/VirtualGrid";
@@ -35,6 +36,7 @@ function MainApp() {
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sessionsForId, setSessionsForId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
@@ -110,12 +112,13 @@ function MainApp() {
       }
       if (e.key === "Escape") {
         if (showSettings) setShowSettings(false);
+        else if (sessionsForId) setSessionsForId(null);
         else if (selectedId) setSelectedId(null);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showSettings, selectedId]);
+  }, [showSettings, selectedId, sessionsForId]);
 
   const categories = useMemo(() => {
     const set = new Set(games.map((g) => g.category || "Games"));
@@ -175,11 +178,12 @@ function MainApp() {
   );
 
   const selected = games.find((g) => g.id === selectedId) || null;
+  const sessionsGame = games.find((g) => g.id === sessionsForId) || null;
 
   const addGames = async () => {
     const selected = await open({
       multiple: true,
-      filters: [{ name: "Games", extensions: ["exe", "lnk", "bat", "cmd"] }],
+      filters: [{ name: "Games", extensions: ["exe", "lnk", "bat", "cmd", "url"] }],
     });
     if (!selected) return;
     const paths = Array.isArray(selected) ? selected : [selected];
@@ -232,7 +236,7 @@ function MainApp() {
             scrollRef.current = el;
           }}
         >
-          {!selected && (
+          {!selected && !sessionsGame && (
             <>
               <div className="topbar">
                 <div className="search">
@@ -377,7 +381,7 @@ function MainApp() {
                         </span>
                         <span className="add-text">
                           Add Games
-                          <small>Browse for .exe or shortcut</small>
+                          <small>Browse for .exe, shortcut, or Steam .url</small>
                         </span>
                       </button>
                     </>
@@ -395,7 +399,12 @@ function MainApp() {
             </>
           )}
 
-          {selected && (
+          {sessionsGame ? (
+            <SessionResultsPage
+              game={sessionsGame}
+              onBack={() => setSessionsForId(null)}
+            />
+          ) : selected ? (
             <GameDetail
               game={selected}
               reduceMotion={settings.reduceMotion}
@@ -407,8 +416,9 @@ function MainApp() {
                 setGames((prev) => prev.map((x) => (x.id === g.id ? g : x)));
               }}
               onLaunch={() => api.launchGame(selected.id).then(refresh)}
+              onOpenSessions={() => setSessionsForId(selected.id)}
             />
-          )}
+          ) : null}
         </main>
       </div>
 

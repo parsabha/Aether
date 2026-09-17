@@ -71,7 +71,7 @@ export function Sidebar({
           </span>
           <span className="add-text">
             Add Games
-            <small>Import .exe or shortcut</small>
+            <small>Import .exe, shortcut, or Steam .url</small>
           </span>
         </button>
         <nav className="nav">

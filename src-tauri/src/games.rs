@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use uuid::Uuid;
 
 pub struct AppState {
@@ -18,6 +18,10 @@ pub struct AppState {
 pub struct RunningGame {
     pub started_at: i64,
     pub pid: u32,
+    pub session_id: String,
+    /// Keep the session alive until this wall time while waiting for Steam
+    /// (or another launcher) to spawn the real game process.
+    pub wait_until: i64,
 }
 
 fn now_ms() -> i64 {
@@ -47,10 +51,6 @@ fn file_exists(path: &str) -> bool {
     let ok = Path::new(path).exists();
     cache.lock().insert(path.to_string(), (now, ok));
     ok
-}
-
-fn path_exists(p: &Option<String>) -> bool {
-    p.as_ref().map(|s| file_exists(s)).unwrap_or(false)
 }
 
 fn asset_url(path: &Option<String>) -> Option<String> {
@@ -116,7 +116,11 @@ pub fn serialize(state: &AppState, g: Game) -> GameDto {
         })
         .collect();
     let running = state.running.lock().contains_key(&g.id);
-    let missing = !path_exists(&g.exe_path);
+    let missing = match &g.exe_path {
+        Some(p) if p.to_ascii_lowercase().starts_with("steam://") => false,
+        Some(p) => !file_exists(p),
+        None => true,
+    };
     GameDto {
         game: g,
         cover_url,
@@ -159,6 +163,30 @@ pub fn add_from_exe(state: &AppState, exe_path: String) -> Result<GameDto, Strin
         return Err("Executable not found".into());
     }
     let lower = exe_path.to_ascii_lowercase();
+
+    // Steam internet shortcut (.url) — store the protocol as exe_path so Play
+    // goes through Steam without needing a local binary path.
+    if lower.ends_with(".url") {
+        if let Some(app_id) = crate::steam::parse_steam_url_file(&exe_path) {
+            let steam_uri = format!("steam://rungameid/{app_id}");
+            for g in state.db.list_games()? {
+                if g.exe_path
+                    .as_ref()
+                    .map(|p| p.to_ascii_lowercase() == steam_uri.to_ascii_lowercase())
+                    .unwrap_or(false)
+                {
+                    return Ok(serialize(state, g));
+                }
+            }
+            let name = Path::new(&exe_path)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .map(pretty_name)
+                .unwrap_or_else(|| "Steam Game".into());
+            return insert_game(state, name, Some(steam_uri), String::new(), None);
+        }
+    }
+
     for g in state.db.list_games()? {
         if g.exe_path
             .as_ref()
@@ -168,6 +196,35 @@ pub fn add_from_exe(state: &AppState, exe_path: String) -> Result<GameDto, Strin
             return Ok(serialize(state, g));
         }
     }
+    let steam = crate::steam::resolve_steam_info(&exe_path);
+    let name = steam
+        .as_ref()
+        .and_then(|s| s.name.clone())
+        .filter(|n| !n.trim().is_empty())
+        .unwrap_or_else(|| pretty_name(&exe_path));
+    let cwd = Path::new(&exe_path)
+        .parent()
+        .map(|p| p.to_string_lossy().to_string());
+    let mut tags = Vec::new();
+    if steam.is_some() || crate::steam::looks_like_steam_game(&exe_path) {
+        tags.push("Steam".into());
+    }
+    insert_game(state, name, Some(exe_path), String::new(), cwd).map(|mut dto| {
+        if !tags.is_empty() {
+            dto.game.tags = tags;
+            let _ = state.db.upsert_game(&dto.game);
+        }
+        dto
+    })
+}
+
+fn insert_game(
+    state: &AppState,
+    name: String,
+    exe_path: Option<String>,
+    args: String,
+    cwd: Option<String>,
+) -> Result<GameDto, String> {
     let id = Uuid::new_v4().to_string().replace('-', "");
     let id = id.chars().take(16).collect::<String>();
     let max_order = state
@@ -177,14 +234,11 @@ pub fn add_from_exe(state: &AppState, exe_path: String) -> Result<GameDto, Strin
         .map(|g| g.sort_order)
         .max()
         .unwrap_or(-10);
-    let cwd = Path::new(&exe_path)
-        .parent()
-        .map(|p| p.to_string_lossy().to_string());
     let g = Game {
         id: id.clone(),
-        name: pretty_name(&exe_path),
-        exe_path: Some(exe_path),
-        args: String::new(),
+        name,
+        exe_path,
+        args,
         cwd,
         cover: None,
         cover_webm: None,
@@ -298,6 +352,21 @@ fn shell_execute(exe: &str, args: &str, cwd: Option<&str>, verb: Option<&str>) -
     Ok(0)
 }
 
+/// Open a protocol URI (e.g. `steam://rungameid/730`) via the shell.
+#[cfg(windows)]
+pub fn shell_execute_uri(uri: &str) -> Result<(), String> {
+    shell_execute(uri, "", None, None).map(|_| ())
+}
+
+#[cfg(not(windows))]
+pub fn shell_execute_uri(uri: &str) -> Result<(), String> {
+    Command::new("xdg-open")
+        .arg(uri)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[cfg(windows)]
 fn launch_windows(exe: &str, args: &str, cwd: Option<&str>, as_admin: bool) -> Result<u32, String> {
     use std::os::windows::process::CommandExt;
@@ -365,26 +434,74 @@ pub fn launch_game(app: &AppHandle, state: &AppState, id: &str) -> Result<GameDt
         .exe_path
         .clone()
         .ok_or_else(|| "No executable".to_string())?;
-    if !Path::new(&exe).exists() {
-        return Err("Executable missing".into());
-    }
     let settings = state.db.get_settings()?;
-    let pid = launch_windows(
-        &exe,
-        &g.args,
-        g.cwd.as_deref(),
-        settings.launch_as_admin,
-    )?;
-    let started = now_ms();
+
+    let lower = exe.to_ascii_lowercase();
+    let steam_app_id = if lower.starts_with("steam://") {
+        crate::steam::app_id_from_uri(&exe)
+    } else {
+        crate::steam::resolve_steam_info(&exe).map(|s| s.app_id)
+    };
+
+    // Steam titles must go through the client — a direct spawn often flashes
+    // and exits, then Steam relaunches the real process (breaking playtime).
+    let (pid, wait_until) = if let Some(app_id) = steam_app_id {
+        crate::steam::launch_steam_app(app_id)?;
+        let started = now_ms();
+        // Wait up to 3 minutes for Steam to finish updates / launch the game.
+        (0u32, started + 180_000)
+    } else {
+        if !Path::new(&exe).exists() {
+            return Err("Executable missing".into());
+        }
+        let pid = launch_windows(
+            &exe,
+            &g.args,
+            g.cwd.as_deref(),
+            settings.launch_as_admin,
+        )?;
+        let started = now_ms();
+        // Short handoff window for launchers that respawn the real process.
+        let grace = if crate::steam::looks_like_steam_game(&exe) {
+            120_000
+        } else {
+            45_000
+        };
+        (pid, started + grace)
+    };
+
+    let (session_id, started) = crate::session_telemetry::begin_session(&state.db, id)
+        .unwrap_or_else(|_| (uuid::Uuid::new_v4().to_string(), now_ms()));
     state.running.lock().insert(
         id.to_string(),
         RunningGame {
             started_at: started,
             pid,
+            session_id,
+            wait_until,
         },
     );
+    // Start sampling / overlay immediately; detection will bind the real PID
+    // once Steam (or a launcher stub) spawns the game process.
+    crate::game_perf::set_gaming(true);
+    crate::overlay_stats::ensure_started(app);
+    if pid != 0 {
+        crate::overlay_stats::set_target_pid(Some(pid));
+    }
+    if settings.overlay_enabled {
+        crate::island::apply_hud_flags(true, settings.island_on_top);
+        if let Some(win) = app.get_webview_window("island") {
+            let _ = win.set_always_on_top(true);
+            let _ = win.set_ignore_cursor_events(true);
+            crate::island::reassert_topmost_now(&win);
+            crate::island::force_pass_through_hwnd(&win);
+        }
+    }
     g.launch_count += 1;
     g.last_played = Some(started);
+    if steam_app_id.is_some() && !g.tags.iter().any(|t| t.eq_ignore_ascii_case("Steam")) {
+        g.tags.push("Steam".into());
+    }
     state.db.upsert_game(&g)?;
     let _ = app.emit("library:changed", ());
     Ok(serialize(state, g))

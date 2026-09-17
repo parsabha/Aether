@@ -1,4 +1,4 @@
 [[actions]]
 name = "install"
-path = "Aether_1.0.0_x64-setup.exe"
+path = "Aether_1.2.0_x64-setup.exe"
 platform = "windows"

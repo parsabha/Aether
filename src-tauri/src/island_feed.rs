@@ -119,6 +119,10 @@ fn feed_worker(rx: Receiver<WorkerCmd>) {
                 let _ = media_skip_previous_now();
             }
             Err(RecvTimeoutError::Timeout) => {
+                // Skip media/notification COM while a game is up — saves CPU/IO.
+                if crate::game_perf::is_gaming() {
+                    continue;
+                }
                 #[cfg(windows)]
                 refresh_snapshot();
             }
