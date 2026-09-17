@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sgdb-search"
+description = "Enables the sgdb_search command without any pre-configured scope."
+commands.allow = ["sgdb_search"]
+
+[[permission]]
+identifier = "deny-sgdb-search"
+description = "Denies the sgdb_search command without any pre-configured scope."
+commands.deny = ["sgdb_search"]

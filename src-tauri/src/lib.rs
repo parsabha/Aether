@@ -9,7 +9,9 @@ mod media;
 mod migrate;
 mod overlay_stats;
 mod session_telemetry;
+mod sgdb_vault;
 mod steam;
+mod steamgriddb;
 
 use games::AppState;
 use parking_lot::Mutex;
@@ -182,7 +184,19 @@ async fn add_games(app: AppHandle, paths: Vec<String>) -> Result<Vec<games::Game
             {
                 continue;
             }
-            out.push(games::add_from_exe(&state, p)?);
+            let mut dto = games::add_from_exe(&state, p)?;
+            // Best-effort: top-rated cover / hero / icon from SteamGridDB.
+            match steamgriddb::autofetch_artwork(&state, &dto.game.id) {
+                Ok(n) if n > 0 => {
+                    if let Ok(Some(g)) = state.db.get_game(&dto.game.id) {
+                        dto = games::serialize(&state, g);
+                    }
+                    let _ = app.emit("library:changed", ());
+                }
+                Ok(_) => {}
+                Err(e) => eprintln!("SteamGridDB autofetch skipped: {e}"),
+            }
+            out.push(dto);
         }
         Ok(out)
     })
@@ -247,6 +261,58 @@ async fn set_media_path(
     off_ui(move || {
         let state = app.state::<AppState>();
         games::set_media_path(&state, &id, &slot, &src)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn sgdb_search(app: AppHandle, term: String) -> Result<Vec<steamgriddb::SgdbGame>, String> {
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        steamgriddb::search(&state, &term)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn sgdb_list_assets(
+    app: AppHandle,
+    sgdb_game_id: u64,
+    slot: String,
+) -> Result<Vec<steamgriddb::SgdbAsset>, String> {
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        steamgriddb::list_assets(&state, sgdb_game_id, &slot)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn sgdb_apply_asset(
+    app: AppHandle,
+    game_id: String,
+    slot: String,
+    url: String,
+    mime: Option<String>,
+) -> Result<games::GameDto, String> {
+    off_ui(move || {
+        steamgriddb::apply_asset(&app, &game_id, &slot, &url, mime.as_deref())
+    })
+    .await
+}
+
+#[tauri::command]
+async fn sgdb_autofetch(app: AppHandle, game_id: String) -> Result<games::GameDto, String> {
+    off_ui(move || {
+        let state = app.state::<AppState>();
+        let _ = steamgriddb::autofetch_artwork(&state, &game_id)?;
+        let g = state
+            .db
+            .get_game(&game_id)?
+            .ok_or_else(|| "Game not found".to_string())?;
+        let dto = games::serialize(&state, g);
+        let _ = app.emit("library:changed", ());
+        Ok(dto)
     })
     .await
 }
@@ -665,6 +731,10 @@ pub fn run() {
             island_feed::island_media_next,
             island_feed::island_media_previous,
             set_media_path,
+            sgdb_search,
+            sgdb_list_assets,
+            sgdb_apply_asset,
+            sgdb_autofetch,
             remove_screenshot,
             optimize_library,
             process_media_jobs,

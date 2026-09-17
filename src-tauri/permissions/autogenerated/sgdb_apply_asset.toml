@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sgdb-apply-asset"
+description = "Enables the sgdb_apply_asset command without any pre-configured scope."
+commands.allow = ["sgdb_apply_asset"]
+
+[[permission]]
+identifier = "deny-sgdb-apply-asset"
+description = "Denies the sgdb_apply_asset command without any pre-configured scope."
+commands.deny = ["sgdb_apply_asset"]

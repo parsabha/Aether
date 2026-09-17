@@ -61,6 +61,25 @@ export interface Settings {
   overlayShowGpuUsage: boolean;
   overlayShowCpuTemp: boolean;
   overlayShowVram: boolean;
+  steamgriddbApiKey: string;
+}
+
+export interface SgdbGame {
+  id: number;
+  name: string;
+  releaseDate?: number | null;
+  types?: string[];
+  verified?: boolean;
+}
+
+export interface SgdbAsset {
+  id: number;
+  url: string;
+  thumb: string;
+  width?: number;
+  height?: number;
+  style?: string;
+  mime?: string | null;
 }
 
 export interface OverlayStats {

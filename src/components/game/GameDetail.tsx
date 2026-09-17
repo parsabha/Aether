@@ -5,6 +5,7 @@ import { api } from "../../lib/api";
 import type { Game, MediaKind } from "../../lib/types";
 import { AutoPlayMedia } from "../media/AutoPlayMedia";
 import { SessionTeaser } from "./SessionTeaser";
+import { ArtSourceMenu, SteamGridDbPicker } from "./SteamGridDbPicker";
 
 const ACCENT_SWATCHES = [
   "#0078f2",
@@ -91,7 +92,7 @@ function ArtCard({
       </div>
       <div className="art-card-meta">
         <strong>{label}</strong>
-        <span>{url ? hint : "Click to browse"}</span>
+                <span>{url ? hint : "SteamGridDB or upload"}</span>
       </div>
     </button>
   );
@@ -115,6 +116,9 @@ export function GameDetail({
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sourceSlot, setSourceSlot] = useState<"cover" | "banner" | "icon" | null>(null);
+  const [sgdbSlot, setSgdbSlot] = useState<"cover" | "banner" | "icon" | null>(null);
+  const [autofilling, setAutofilling] = useState(false);
   const [draft, setDraft] = useState({
     name: game.name,
     description: game.description,
@@ -149,7 +153,7 @@ export function GameDetail({
 
   const pageAccent = draft.accent || game.accent || undefined;
 
-  const pick = async (slot: "cover" | "banner" | "icon") => {
+  const uploadFromPc = async (slot: "cover" | "banner" | "icon") => {
     const selected = await open({
       multiple: false,
       filters: [
@@ -162,6 +166,19 @@ export function GameDetail({
     if (!selected || Array.isArray(selected)) return;
     const g = await api.setMediaPath(game.id, slot, selected);
     onChange(g);
+  };
+
+  const pick = (slot: "cover" | "banner" | "icon") => setSourceSlot(slot);
+
+  const autofillArtwork = async () => {
+    setAutofilling(true);
+    try {
+      onChange(await api.sgdbAutofetch(game.id));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAutofilling(false);
+    }
   };
 
   const pickExe = async () => {
@@ -366,9 +383,20 @@ export function GameDetail({
           <section className="detail-section">
             <header className="detail-section-head">
               <h2>Artwork</h2>
-              <button type="button" className="detail-section-action" onClick={() => setEditOpen(true)}>
-                Manage
-              </button>
+              <div className="detail-section-actions">
+                <button
+                  type="button"
+                  className="detail-section-action"
+                  disabled={autofilling}
+                  onClick={() => void autofillArtwork()}
+                  title="Fill empty slots with top-rated SteamGridDB art"
+                >
+                  {autofilling ? "Fetching…" : "Auto-fill SGDB"}
+                </button>
+                <button type="button" className="detail-section-action" onClick={() => setEditOpen(true)}>
+                  Manage
+                </button>
+              </div>
             </header>
             <div className="art-grid">
               <ArtCard
@@ -483,6 +511,15 @@ export function GameDetail({
               <button type="button" className="quick-btn" onClick={() => setEditOpen(true)}>
                 <span>Settings</span>
                 <small>Name, media, accent</small>
+              </button>
+              <button
+                type="button"
+                className="quick-btn"
+                disabled={autofilling}
+                onClick={() => void autofillArtwork()}
+              >
+                <span>{autofilling ? "Fetching artwork…" : "Auto-fill artwork"}</span>
+                <small>Top SteamGridDB grid, hero, icon</small>
               </button>
               {game.exePath && !game.exePath.toLowerCase().startsWith("steam://") && (
                 <button type="button" className="quick-btn" onClick={() => api.openFolder(game.exePath!)}>
@@ -694,6 +731,33 @@ export function GameDetail({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {sourceSlot && (
+        <ArtSourceMenu
+          slot={sourceSlot}
+          open
+          onClose={() => setSourceSlot(null)}
+          onSteamGridDb={() => {
+            const slot = sourceSlot;
+            setSourceSlot(null);
+            setSgdbSlot(slot);
+          }}
+          onUpload={() => {
+            const slot = sourceSlot;
+            setSourceSlot(null);
+            void uploadFromPc(slot);
+          }}
+        />
+      )}
+
+      {sgdbSlot && (
+        <SteamGridDbPicker
+          game={game}
+          slot={sgdbSlot}
+          onClose={() => setSgdbSlot(null)}
+          onApplied={onChange}
+        />
+      )}
 
       {lightbox && (
         <div className="lightbox" onClick={() => setLightbox(null)}>

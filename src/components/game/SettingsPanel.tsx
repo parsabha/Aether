@@ -285,6 +285,15 @@ export function SettingsPanel({
         </section>
 
         <section className="set-section">
+          <h3>Artwork</h3>
+          <p className="set-hint">
+            Aether uses SteamGridDB to auto-fill covers, heroes, and icons when you add a game.
+            Empty slots only — anything you set later is left alone. You can also browse SteamGridDB
+            or upload from your PC on each game page.
+          </p>
+        </section>
+
+        <section className="set-section">
           <h3>Launch</h3>
           <div className="set-row">
             <div className="set-copy">

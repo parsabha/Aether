@@ -1,6 +1,6 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { DisplayInfo, Game, IslandFeed, OverlayStats, PlaySessionDetail, PlaySessionSummary, Settings } from "./types";
+import type { DisplayInfo, Game, IslandFeed, OverlayStats, PlaySessionDetail, PlaySessionSummary, Settings, SgdbAsset, SgdbGame } from "./types";
 
 function mediaSrc(path?: string | null): string | null {
   if (!path) return null;
@@ -51,6 +51,20 @@ export const api = {
   islandGames: async () => (await invoke<Game[]>("island_games")).map(hydrate),
   setMediaPath: async (id: string, slot: string, src: string) =>
     hydrate(await invoke<Game>("set_media_path", { id, slot, src })),
+  sgdbSearch: (term: string) => invoke<SgdbGame[]>("sgdb_search", { term }),
+  sgdbListAssets: (sgdbGameId: number, slot: string) =>
+    invoke<SgdbAsset[]>("sgdb_list_assets", { sgdbGameId, slot }),
+  sgdbApplyAsset: async (gameId: string, slot: string, url: string, mime?: string | null) =>
+    hydrate(
+      await invoke<Game>("sgdb_apply_asset", {
+        gameId,
+        slot,
+        url,
+        mime: mime ?? null,
+      }),
+    ),
+  sgdbAutofetch: async (gameId: string) =>
+    hydrate(await invoke<Game>("sgdb_autofetch", { gameId })),
   removeScreenshot: (id: string, path: string) =>
     invoke<boolean>("remove_screenshot", { id, path }),
   optimizeLibrary: () => invoke<number>("optimize_library"),

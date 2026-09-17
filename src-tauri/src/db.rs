@@ -87,6 +87,8 @@ pub struct Settings {
     pub overlay_show_gpu_usage: bool,
     pub overlay_show_cpu_temp: bool,
     pub overlay_show_vram: bool,
+    /// Bearer token from steamgriddb.com/profile/preferences
+    pub steamgriddb_api_key: String,
 }
 
 impl Default for Settings {
@@ -113,6 +115,7 @@ impl Default for Settings {
             overlay_show_gpu_usage: true,
             overlay_show_cpu_temp: true,
             overlay_show_vram: true,
+            steamgriddb_api_key: String::new(),
         }
     }
 }
