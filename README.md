@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/parsabahemmat/Aether/releases/latest"><strong>Download for Windows</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/parsabahemmat/Aether/releases/tag/v1.2.0">v1.2.0</a>
+  <a href="https://github.com/parsabahemmat/Aether/releases/tag/v1.3.0">v1.3.0</a>
 </p>
 
 <p align="center">
@@ -25,12 +25,13 @@ Aether keeps your PC games in a local library with animated covers, playtime, an
 
 Windows 10 and 11. Installs for the current user. The app runs elevated so Play can open games as administrator without a second UAC prompt when that option is on.
 
-## What’s new in 1.2
+## What’s new in 1.3
 
-- **Steam games** — titles under `steamapps` (or Steam `.url` shortcuts) launch through Steam (`steam://rungameid/…`) so DRM handoffs no longer flash-and-quit; playtime, overlay, and session tracking stay attached to the real game process
-- **In-game overlay** — optional live FPS / CPU / GPU / temp / VRAM strip on the island while a library game is running (PresentMon-backed FPS)
-- **Session results** — each play session records charts and summary stats (avg/min/max FPS, CPU/GPU, temps, VRAM, 1% lows) on the game page
-- **Smarter process detection** — follows launcher stubs (Steam, Rockstar, Epic, and similar) to the process that actually presents frames
+- **SteamGridDB artwork** — browse grids, heroes, and icons from [SteamGridDB](https://www.steamgriddb.com/) and apply them in one click from the game page
+- **Auto-fill on add** — when you add a game, Aether can fill empty cover, banner, and icon slots with the top SteamGridDB matches (anything you set later is left alone)
+- **Built-in API access** — SteamGridDB credentials stay sealed inside the app; no key setup required in Settings
+
+Earlier in 1.2: Steam launches via `steam://rungameid/…`, in-game overlay metrics (FPS / CPU / GPU / temps / VRAM), and per-session performance charts on the game page.
 
 ## Steam games
 
@@ -55,6 +56,8 @@ After you quit, open the game page for a **session teaser** and full results wit
 
 Add games by dropping `.exe`, `.lnk`, `.bat`, `.cmd`, or Steam `.url` files onto the window, or pick them from disk. Each entry can have a cover, banner, icon, tags, category, and notes.
 
+On add, Aether can auto-fill empty artwork from SteamGridDB. From the game page, choose **SteamGridDB** or a local file when setting cover, banner, or icon — search a title, pick a grid/hero/icon, and it downloads into your library.
+
 Covers accept still images, GIFs, and video. With [ffmpeg](https://ffmpeg.org/) on `PATH` (or `ffmpeg.exe` in `%APPDATA%\Aether\bin\`), GIF and video artwork is converted to VP9 WebM and plays while the tile is visible.
 
 Playtime and launch count are stored on your machine. Search, favorites, and a custom sort order are included. If a Nebula library exists at `%APPDATA%\Nebula`, Aether imports it on first launch.
@@ -75,7 +78,7 @@ Pick a visual theme and window material (Acrylic, Mica, Tabbed, or solid). Accen
 
 ## Install
 
-1. Download [**Aether-Setup-1.2.0.exe**](https://github.com/parsabahemmat/Aether/releases/latest)
+1. Download [**Aether-Setup-1.3.0.exe**](https://github.com/parsabahemmat/Aether/releases/latest)
 2. Run the installer (Windows may ask for administrator once)
 3. Open **Aether** from the Start menu
 
